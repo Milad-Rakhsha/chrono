@@ -339,8 +339,6 @@ int main(int argc, char* argv[]) {
 
     // Switch off mesh class gravity
     my_mesh->SetAutomaticGravity(false);
-    // This is mandatory
-    my_mesh->SetupInitial();
     // Remember to add the mesh to the system!
     ////my_system.Add(my_mesh);
     // Perform a dynamic time integration:
@@ -360,6 +358,9 @@ int main(int argc, char* argv[]) {
     mystepper->SetTolerance(1e-07);
     mystepper->SetMode(ChTimestepperHHT::POSITION);
     mystepper->SetScaling(true);
+
+    // Mark completion of system construction
+    my_system.SetupInitial();
 
     utils::Data m_data;
     m_data.resize(7);

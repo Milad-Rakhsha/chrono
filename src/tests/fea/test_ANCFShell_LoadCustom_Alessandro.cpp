@@ -512,8 +512,6 @@ int main(int argc, char* argv[]) {
 
     // Switch off mesh class gravity
     my_mesh->SetAutomaticGravity(false);
-    // This is mandatory
-    my_mesh->SetupInitial();
     // Remember to add the mesh to the system!
     my_system.Add(my_mesh);
     
@@ -534,6 +532,9 @@ int main(int argc, char* argv[]) {
     my_system.ChangeLcpSolverSpeed(mkl_solver_speed);
     mkl_solver_stab->SetSparsityPatternLock(true);
 	mkl_solver_speed->SetSparsityPatternLock(true);
+
+    // Mark completion of system construction
+    my_system.SetupInitial();
 
     my_system.Setup();
     my_system.Update();

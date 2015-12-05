@@ -364,7 +364,6 @@ int main(int argc, char* argv[]) {
         element->SetAlphaDamp(0.05);               // Structural damping for this
         element->Setdt(time_step);                 // dt to calculate DampingCoefficient
         element->SetGravityOn(true);               // turn gravity on/off
-		element->SetAirPressureOn(false);
         ChMatrixNM<double, 35, 1> StockAlpha_EAS;  // StockAlpha(5*7,1): Max #Layer is 7
         StockAlpha_EAS.Reset();
         element->SetStockAlpha(StockAlpha_EAS);
@@ -470,8 +469,6 @@ int main(int argc, char* argv[]) {
     }
     // Switch off mesh class gravity: my_mesh still does not implement this element's gravity forces
     my_mesh->SetAutomaticGravity(false);
-    // This is mandatory
-    my_mesh->SetupInitial();
     // Remember to add the mesh to the system
     my_system.Add(my_mesh);
 
@@ -500,6 +497,9 @@ int main(int argc, char* argv[]) {
 	// Body_2->Accumulate_force(ChVector<>(60, 0, 0), Body_2->GetPos(), false);
     // Options for visualization in irrlicht
 	Body_2->SetPos_dt(ChVector<>(ForVel,0,0));
+
+    // Mark completion of system construction
+    my_system.SetupInitial();
 
     if (showVisual) {
         ChSharedPtr<ChVisualizationFEAmesh> mvisualizemesh(new ChVisualizationFEAmesh(*(my_mesh.get_ptr())));

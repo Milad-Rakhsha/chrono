@@ -88,7 +88,7 @@ ChSharedPtr<ChNodeFEAxyzD> ConstrainedNodeD;
 
 double GroundLoc = -0.11;
 const int num_steps = 1500;  // Number of time steps for unit test (range 1 to 4000) 550
-double time_step = 0.0001;   // Time step: 0.001 It works like that, but rotates at the beginning
+double time_step = 0.0002;   // Time step: 0.001 It works like that, but rotates at the beginning
 // 0.008
 // Specification of the mesh
 // ChLoadCustomMultiple to include basic node-Ground contact interaction
@@ -117,13 +117,10 @@ class MyLoadCustomMultiple : public ChLoadCustomMultiple {
             for (int iiinode = 0; iiinode < 8; iiinode++){
                 Node1_Pos = state_x->ClipVector(iiinode * 6, 0);
                 Node1_Vel = state_w->ClipVector(iiinode * 6, 0);
-
                 if (Node1_Pos.y < GroundLoc) {
                     double Penet = abs(Node1_Pos.y - GroundLoc); // +CGround*abs(Node1_Vel.y);
-                NormalForceNode = KGround * Penet;             // +CGround * abs(Node1_Vel.y)*Penet;
-                //this->load_Q(iiinode * 6 + 1) = NormalForceNode;  // Fy (Vertical)
-                this->load_Q(iiinode * 6 + 1) = NormalForceNode;  // Fy (Vertical)
-            }
+                    NormalForceNode = KGround * Penet;
+                this->load_Q(iiinode * 6 + 1) = NormalForceNode; }             // +CGround * abs(Node1_Vel.y)*Penet;
             }
         }
     }
@@ -206,7 +203,7 @@ int main(int argc, char* argv[]) {
         element1->AddLayer(0.01, 0.0 * CH_C_DEG_TO_RAD, mat);
 
         // Set other element properties
-        element1->SetAlphaDamp(0.25);  // Structural damping for this element
+        element1->SetAlphaDamp(0.00);  // Structural damping for this element
         element1->SetGravityOn(true);  // gravitational forces
         my_mesh[1]->AddElement(element);
         my_mesh[1]->SetAutomaticGravity(false);
@@ -219,7 +216,7 @@ int main(int argc, char* argv[]) {
     element->AddLayer(0.01, 0.0 * CH_C_DEG_TO_RAD, mat);
 
     // Set other element properties
-    element->SetAlphaDamp(0.25);  // Structural damping for this element
+    element->SetAlphaDamp(0.00);  // Structural damping for this element
     element->SetGravityOn(true);  // gravitational forces
 
     // Add element to mesh
@@ -452,8 +449,8 @@ int main(int argc, char* argv[]) {
             if (!application.GetPaused()) {
                 std::cout << "Time t = " << my_system.GetChTime() << "s \n";
                 printf(
-                    "Vertical position of Nodes:      %12.4e    %12.4e \t Body  %12.4e %12.4e",
-                    NodeMesh0->pos.y, NodeMesh1->pos.y, Body_2->GetPos().y, Body_3->GetPos().y);
+                    "Vertical position of Nodes:      %12.4e    %12.4e \t Body  %12.4e %12.4e \t Lateral Pos Bodies %12.4e %12.4e",
+                    NodeMesh0->pos.y, NodeMesh1->pos.y, Body_2->GetPos().y, Body_3->GetPos().y, Body_2->GetPos().z, Body_3->GetPos().z);
             }
         }
         double duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;

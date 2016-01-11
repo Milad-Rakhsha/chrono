@@ -54,9 +54,9 @@ using namespace scene;
 
 bool addConstRim = true;  //
 bool addBodies = true;
-bool addGroundForces = false;
+bool addGroundForces = true;
 bool showVisual = true;
-bool addSecondMesh = false;
+bool addSecondMesh = true;
 
 ChSharedPtr<ChBody> BGround;
 ChSharedPtr<ChBody> Body_2;       // Hub 1
@@ -88,7 +88,7 @@ ChSharedPtr<ChNodeFEAxyzD> ConstrainedNodeD;
 
 double GroundLoc = -0.11;
 const int num_steps = 1500;  // Number of time steps for unit test (range 1 to 4000) 550
-double time_step = 0.00005;   // Time step: 0.001 It works like that, but rotates at the beginning
+double time_step = 0.0001;   // Time step: 0.001 It works like that, but rotates at the beginning
 // 0.008
 // Specification of the mesh
 // ChLoadCustomMultiple to include basic node-Ground contact interaction
@@ -110,17 +110,18 @@ class MyLoadCustomMultiple : public ChLoadCustomMultiple {
         double FrictionCoeff = 0.0;
 
         // Calculation of number of nodes in contact with the Ground
-        KGround = 1e3;
+        KGround = 1e4;
         CGround = 0.001 * KGround;
-
+        GroundLoc = -0.11;
         if (state_x && state_w) {
-            for (int iiinode = 0; iiinode < 4; iiinode++){
+            for (int iiinode = 0; iiinode < 8; iiinode++){
                 Node1_Pos = state_x->ClipVector(iiinode * 6, 0);
                 Node1_Vel = state_w->ClipVector(iiinode * 6, 0);
 
                 if (Node1_Pos.y < GroundLoc) {
                     double Penet = abs(Node1_Pos.y - GroundLoc); // +CGround*abs(Node1_Vel.y);
                 NormalForceNode = KGround * Penet;             // +CGround * abs(Node1_Vel.y)*Penet;
+                //this->load_Q(iiinode * 6 + 1) = NormalForceNode;  // Fy (Vertical)
                 this->load_Q(iiinode * 6 + 1) = NormalForceNode;  // Fy (Vertical)
             }
             }
@@ -169,10 +170,22 @@ int main(int argc, char* argv[]) {
     my_mesh[0]->AddNode(node4);
 
     if (addSecondMesh){
-    my_mesh[1]->AddNode(node1);//    
-    my_mesh[1]->AddNode(node2);//
-    my_mesh[1]->AddNode(node3);//
-    my_mesh[1]->AddNode(node4);}//
+        ChSharedPtr<ChNodeFEAxyzD> node1_1(new ChNodeFEAxyzD(ChVector<>(-0.5, -0.1, -0.5), ChVector<>(0, 1, 0)));
+        node1_1->SetMass(0);
+        my_mesh[1]->AddNode(node1_1);
+
+        ChSharedPtr<ChNodeFEAxyzD> node2_1(new ChNodeFEAxyzD(ChVector<>(-0.5, -0.1, 0.5), ChVector<>(0, 1, 0)));
+        node2_1->SetMass(0);
+        my_mesh[1]->AddNode(node2_1);
+
+        ChSharedPtr<ChNodeFEAxyzD> node3_1(new ChNodeFEAxyzD(ChVector<>(0.5, -0.1, 0.5), ChVector<>(0, 1, 0)));
+        node3->SetMass(0);
+        my_mesh[1]->AddNode(node3_1);
+
+        ChSharedPtr<ChNodeFEAxyzD> node4_1(new ChNodeFEAxyzD(ChVector<>(0.5, -0.1, -0.5), ChVector<>(0, 1, 0)));
+        node4_1->SetMass(0);
+        my_mesh[1]->AddNode(node4_1);
+    }
 
 
     ChSharedPtr<ChMaterialShellANCF> mat(new ChMaterialShellANCF(500, 5.0e5, 0.3));
@@ -328,19 +341,24 @@ int main(int argc, char* argv[]) {
         for (int iNode = 0; iNode < 4; iNode++) {
                 ChSharedPtr<ChNodeFEAxyzD> NodeLoad(my_mesh[0]->GetNode(iNode).DynamicCastTo<ChNodeFEAxyzD>());
                 NodeList.push_back(NodeLoad);
-                if (addSecondMesh){
-                ChSharedPtr<ChNodeFEAxyzD> NodeLoad1(my_mesh[1]->GetNode(iNode).DynamicCastTo<ChNodeFEAxyzD>());
-                NodeList.push_back(NodeLoad1);}
         }
+        for (int iNode = 0; iNode < 4; iNode++) {
+            if (addSecondMesh){
+                ChSharedPtr<ChNodeFEAxyzD> NodeLoad1(my_mesh[1]->GetNode(iNode).DynamicCastTo<ChNodeFEAxyzD>());
+                NodeList.push_back(NodeLoad1);
+            }
+        }
+
+
         ChSharedPtr<MyLoadCustomMultiple> Mloadcustommultiple(new MyLoadCustomMultiple(NodeList));
         MloadcontainerGround->Add(Mloadcustommultiple);
     }  // End loop over tires
 
     ChSharedPtr<ChNodeFEAxyzD> NodeMesh0(
         my_mesh[0]->GetNode(0).DynamicCastTo<ChNodeFEAxyzD>());
-    if (addSecondMesh){
+
     ChSharedPtr<ChNodeFEAxyzD> NodeMesh1(
-        my_mesh[1]->GetNode(0).DynamicCastTo<ChNodeFEAxyzD>());}
+        my_mesh[1]->GetNode(0).DynamicCastTo<ChNodeFEAxyzD>());
 
     my_system.Add(MloadcontainerGround);
     // Mark completion of system construction
@@ -434,8 +452,8 @@ int main(int argc, char* argv[]) {
             if (!application.GetPaused()) {
                 std::cout << "Time t = " << my_system.GetChTime() << "s \n";
                 printf(
-                    "Vertical position of Nodes:      %12.4e     \t Body  %12.4e %12.4e",
-                    NodeMesh0->pos.y,  Body_2->GetPos().y, Body_3->GetPos().y);
+                    "Vertical position of Nodes:      %12.4e    %12.4e \t Body  %12.4e %12.4e",
+                    NodeMesh0->pos.y, NodeMesh1->pos.y, Body_2->GetPos().y, Body_3->GetPos().y);
             }
         }
         double duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;

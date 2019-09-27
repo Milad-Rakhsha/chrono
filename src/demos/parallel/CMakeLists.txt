@@ -32,6 +32,12 @@ SET(DEMOS
     demo_PAR_snowMPM
     demo_PAR_particlesNSC
     demo_PAR_friction
+    Tikhonov
+    box_Spheres
+    CannonballPackingNSC
+    CannonballPackingSMC
+    demo_PAR_DamBreak
+    demo_PAR_DamBreak_w_cylinder
 )
 
 # Add programs that require OpenGL

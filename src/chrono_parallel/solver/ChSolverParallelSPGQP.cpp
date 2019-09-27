@@ -60,7 +60,10 @@ uint ChSolverParallelSPGQP::Solve(ChShurProduct& ShurProduct,
     f_hist.resize(max_iter + 1);
     temp.resize(size);
     Ad_k.resize(size);
-
+    if (data_manager->settings.solver.randomize_initial_guess)
+        fill_w_rand(gamma, -100, 100, 20);
+    //    if (data_manager->settings.solver.perfrom_regularization)
+    //        addRegularization(Nshur, data_manager->host_data.Regularization);
     alpha = 0.0001;
     if (data_manager->settings.solver.cache_step_length == true) {
         if (data_manager->settings.solver.solver_mode == SolverMode::NORMAL) {

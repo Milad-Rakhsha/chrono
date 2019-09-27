@@ -104,6 +104,18 @@ class solver_settings {
         clamp_bilaterals = true;
         compute_N = false;
         use_full_inertia_tensor = true;
+
+        perfrom_regularization = false;
+        use_compliance_info = false;
+        regularize_tangential = true;
+        randomize_initial_guess = false;
+
+        reg_alpha0 = 1.0;
+        reg_alpha_tau = 0.5;
+        reg_alpha_final = 1e-10;
+
+        reg_tol_tau = 1.0;
+
         max_iteration = 100;
         max_iteration_normal = 0;
         max_iteration_sliding = 100;
@@ -168,6 +180,24 @@ class solver_settings {
     bool use_power_iteration;
     int max_power_iteration;
     real power_iter_tolerance;
+
+    /// Tikhonov regularization parameters
+    bool perfrom_regularization;
+    bool randomize_initial_guess;
+
+    /// Use compliance information for regularization
+    bool use_compliance_info;
+    /// Regularize the rangential forces
+    bool regularize_tangential;
+
+    /// Initial regularization coefficient
+    real reg_alpha0;
+    /// regularization coefficient reduction fraction, i.e. alpha/alpha_pre=tau
+    real reg_alpha_tau;
+    /// stopping value of the regularization coefficient
+    real reg_alpha_final;
+    /// solver tolerance reduction fraction, i.e. tol/tol_pre=tau
+    real reg_tol_tau;
 
     /// Contact force model for SMC.
     ChSystemSMC::ContactForceModel contact_force_model;

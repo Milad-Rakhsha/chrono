@@ -71,7 +71,7 @@ real ChSolverParallel::LargestEigenValue(ChShurProduct& ShurProduct, DynamicVect
         if (lambda == 0) {
             return 1;
         }
-        printf("Lambda: %.20f \n", lambda);
+        //        printf("Lambda: %.20f \n", lambda);
         if (Abs(lambda_old - lambda) < data_manager->settings.solver.power_iter_tolerance) {
             break;
         }
@@ -79,4 +79,28 @@ real ChSolverParallel::LargestEigenValue(ChShurProduct& ShurProduct, DynamicVect
         lambda_old = lambda;
     }
     return lambda;
+}
+
+void chrono::addRegularization(CompressedMatrix<real>& N, DynamicVector<real> reg) {
+    int num = reg.size() / 3;
+    for (int index = 0; index < num; index++) {
+        N(index, index) += reg[index];
+        N(num + 2 * index, num + 2 * index) += reg[num + 2 * index];
+        N(num + 2 * index + 1, num + 2 * index + 1) += reg[num + 2 * index + 1];
+
+        //        std::cout << N(index, index) << ", ";
+    }
+}
+
+void chrono::fill_w_rand(DynamicVector<real>& vec, double amin, double amax, unsigned int seed) {
+    int num = vec.size();
+
+    if ((signed)seed == -1) {
+        seed = time(NULL);
+    }
+    srand(seed);
+    double range = amax - amin;
+    for (size_t i = 0; i < num; i++) {
+        vec[i] = amin + (rand() / (RAND_MAX / range));
+    }
 }

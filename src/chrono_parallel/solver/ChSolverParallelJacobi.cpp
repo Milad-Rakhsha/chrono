@@ -44,6 +44,7 @@ uint ChSolverParallelJacobi::Solve(ChShurProduct& ShurProduct,
     DynamicVector<real> deltal;
     deltal.resize(size);
     CompressedMatrix<real> Nshur = data_manager->host_data.D_T * data_manager->host_data.M_invD;
+
     DynamicVector<real> D;
     D.resize(num_constraints, false);
     real theta = 1;
@@ -55,6 +56,10 @@ uint ChSolverParallelJacobi::Solve(ChShurProduct& ShurProduct,
     // num fluid bodies
     // rigid fluid norm
     // rigid fluid tan
+    if (data_manager->settings.solver.randomize_initial_guess)
+        fill_w_rand(gamma, -100, 100, 20);
+    if (data_manager->settings.solver.perfrom_regularization)
+        addRegularization(Nshur, data_manager->host_data.Regularization);
 
     for (int index = 0; index < (signed)data_manager->num_rigid_contacts; index++) {
         D[index] = Nshur(index, index) + Nshur(num_contacts + index * 2 + 0, num_contacts + index * 2 + 0) +
@@ -63,6 +68,7 @@ uint ChSolverParallelJacobi::Solve(ChShurProduct& ShurProduct,
         D[num_contacts + index * 2 + 0] = D[index];
         D[num_contacts + index * 2 + 1] = D[index];
     }
+
     uint offset = data_manager->num_unilaterals;
 
     for (size_t i = 0; i < num_bilaterals; i++) {
@@ -93,11 +99,12 @@ uint ChSolverParallelJacobi::Solve(ChShurProduct& ShurProduct,
     }
 
     for (current_iteration = 0; current_iteration < (signed)max_iter; current_iteration++) {
-        real omega = .2;  // 2.0 / eignenval;//1.0 / 3.0;
+        real omega = .4;  // 2.0 / eignenval;//1.0 / 3.0;
         ml = ml_old - omega * D * (Nshur * ml_old - r);
 
         Project(ml.data());
         gamma = ml;
+        double residual2 = l2Norm(ml - ml_old);
 
         ml_old = ml;
 
@@ -114,6 +121,9 @@ uint ChSolverParallelJacobi::Solve(ChShurProduct& ShurProduct,
         residual = Sqrt((double)(temp, temp));
 
         AtIterationEnd(residual, objective_value);
+
+        if (residual2 < data_manager->settings.solver.tol_speed)
+            break;
 
         if (data_manager->settings.solver.test_objective) {
             if (objective_value <= data_manager->settings.solver.tolerance_objective) {

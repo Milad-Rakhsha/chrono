@@ -74,6 +74,10 @@ uint ChSolverParallelBB::Solve(ChShurProduct& ShurProduct,
     my = 0;
     mdir = 0;
     ml_p = 0;
+    if (data_manager->settings.solver.randomize_initial_guess)
+        fill_w_rand(gamma, -100, 100, 20);
+    //    if (data_manager->settings.solver.perfrom_regularization)
+    //        addRegularization(Nshur, data_manager->host_data.Regularization);
 
     // Tuning of the spectral gradient search
     real a_min = 1e-13;
@@ -197,17 +201,15 @@ uint ChSolverParallelBB::Solve(ChShurProduct& ShurProduct,
 
         AtIterationEnd(lastgoodres, objective_value);
 
-		if (data_manager->settings.solver.test_objective) {
-			if (objective_value <= data_manager->settings.solver.tolerance_objective) {
-				break;
-			}
-		}
-		else {
-			if (lastgoodres < data_manager->settings.solver.tol_speed) {
-				break;
-			}
-		}
-
+        if (data_manager->settings.solver.test_objective) {
+            if (objective_value <= data_manager->settings.solver.tolerance_objective) {
+                break;
+            }
+        } else {
+            if (lastgoodres < data_manager->settings.solver.tol_speed) {
+                break;
+            }
+        }
 
         // t4.stop();
     }

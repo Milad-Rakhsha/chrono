@@ -89,6 +89,10 @@ uint ChSolverParallelAPGD::Solve(ChShurProduct& ShurProduct,
     // gamma_hat = gamma;
     // ShurProduct(gamma, mg);
     // mg = mg - r;
+    if (data_manager->settings.solver.randomize_initial_guess)
+        fill_w_rand(gamma, -100, 100, 20);
+    //    if (data_manager->settings.solver.perfrom_regularization)
+    //        addRegularization(Nshur, data_manager->host_data.Regularization);
 
     temp = gamma - one;
     real norm_temp = Sqrt((real)(temp, temp));

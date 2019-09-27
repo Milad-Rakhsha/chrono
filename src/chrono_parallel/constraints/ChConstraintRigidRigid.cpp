@@ -88,65 +88,61 @@ void ChConstraintRigidRigid::func_Project_spinning(int index, const vec2* ids, c
     real t_u = gam[3 * data_manager->num_rigid_contacts + index * 3 + 1];
     real t_v = gam[3 * data_manager->num_rigid_contacts + index * 3 + 2];
 
-	real t_tang = sqrt(t_v * t_v + t_u * t_u);
-	real t_sptang = fabs(t_n);  // = sqrt(t_n*t_n);
+    real t_tang = sqrt(t_v * t_v + t_u * t_u);
+    real t_sptang = fabs(t_n);  // = sqrt(t_n*t_n);
 
-	if (spinningfriction) {
-		if (t_sptang < spinningfriction * f_n) {
-			// inside upper cone? keep untouched!
-		}
-		else {
-			// inside lower cone? reset  normal,u,v to zero!
-			if ((t_sptang < -(1 / spinningfriction) * f_n) || (fabs(f_n) < 10e-15)) {
-				gam[index * 1 + 0] = 0;
-				gam[3 * data_manager->num_rigid_contacts + index * 3 + 0] = 0;
-			}
-			else {
-				// remaining case: project orthogonally to generator segment of upper cone (CAN BE simplified)
-				real f_n_proj = (t_sptang * spinningfriction + f_n) / (spinningfriction * spinningfriction + 1);
-				real t_tang_proj = f_n_proj * spinningfriction;
-				real tproj_div_t = t_tang_proj / t_sptang;
-				real t_n_proj = tproj_div_t * t_n;
+    if (spinningfriction) {
+        if (t_sptang < spinningfriction * f_n) {
+            // inside upper cone? keep untouched!
+        } else {
+            // inside lower cone? reset  normal,u,v to zero!
+            if ((t_sptang < -(1 / spinningfriction) * f_n) || (fabs(f_n) < 10e-15)) {
+                gam[index * 1 + 0] = 0;
+                gam[3 * data_manager->num_rigid_contacts + index * 3 + 0] = 0;
+            } else {
+                // remaining case: project orthogonally to generator segment of upper cone (CAN BE simplified)
+                real f_n_proj = (t_sptang * spinningfriction + f_n) / (spinningfriction * spinningfriction + 1);
+                real t_tang_proj = f_n_proj * spinningfriction;
+                real tproj_div_t = t_tang_proj / t_sptang;
+                real t_n_proj = tproj_div_t * t_n;
 
-				gam[index * 1 + 0] = f_n_proj;
-				gam[3 * data_manager->num_rigid_contacts + index * 3 + 0] = t_n_proj;
+                gam[index * 1 + 0] = f_n_proj;
+                gam[3 * data_manager->num_rigid_contacts + index * 3 + 0] = t_n_proj;
+            }
+        }
+    }
 
-			}
-		}
-	}
+    if (!rollingfriction) {
+        gam[3 * data_manager->num_rigid_contacts + index * 3 + 1] = 0;
+        gam[3 * data_manager->num_rigid_contacts + index * 3 + 2] = 0;
 
-	if (!rollingfriction) {
-		gam[3 * data_manager->num_rigid_contacts + index * 3 + 1] = 0;
-		gam[3 * data_manager->num_rigid_contacts + index * 3 + 2] = 0;
+        if (f_n < 0)
+            gam[index * 1 + 0] = 0;
+        return;
+    }
+    if (t_tang < rollingfriction * f_n)
+        return;
 
+    if ((t_tang < -(1 / rollingfriction) * f_n) || (fabs(f_n) < 10e-15)) {
+        real f_n_proj = 0;
+        real t_u_proj = 0;
+        real t_v_proj = 0;
 
-		if (f_n < 0)
-			gam[index * 1 + 0] = 0;
-		return;
-	}
-	if (t_tang < rollingfriction * f_n)
-		return;
+        gam[index * 1 + 0] = f_n_proj;
+        gam[3 * data_manager->num_rigid_contacts + index * 3 + 1] = t_u_proj;
+        gam[3 * data_manager->num_rigid_contacts + index * 3 + 2] = t_v_proj;
 
-	if ((t_tang < -(1 / rollingfriction) * f_n) || (fabs(f_n) < 10e-15)) {
-		real f_n_proj = 0;
-		real t_u_proj = 0;
-		real t_v_proj = 0;
+        return;
+    }
+    real f_n_proj = (t_tang * rollingfriction + f_n) / (rollingfriction * rollingfriction + 1);
+    real t_tang_proj = f_n_proj * rollingfriction;
+    real tproj_div_t = t_tang_proj / t_tang;
+    real t_u_proj = tproj_div_t * t_u;
+    real t_v_proj = tproj_div_t * t_v;
 
-		gam[index * 1 + 0] = f_n_proj;
-		gam[3 * data_manager->num_rigid_contacts + index * 3 + 1] = t_u_proj;
-		gam[3 * data_manager->num_rigid_contacts + index * 3 + 2] = t_v_proj;
-
-		return;
-	}
-	real f_n_proj = (t_tang * rollingfriction + f_n) / (rollingfriction * rollingfriction + 1);
-	real t_tang_proj = f_n_proj * rollingfriction;
-	real tproj_div_t = t_tang_proj / t_tang;
-	real t_u_proj = tproj_div_t * t_u;
-	real t_v_proj = tproj_div_t * t_v;
-
-	gam[index * 1 + 0] = f_n_proj;
-	gam[3 * data_manager->num_rigid_contacts + index * 3 + 1] = t_u_proj;
-	gam[3 * data_manager->num_rigid_contacts + index * 3 + 2] = t_v_proj;
+    gam[index * 1 + 0] = f_n_proj;
+    gam[3 * data_manager->num_rigid_contacts + index * 3 + 1] = t_u_proj;
+    gam[3 * data_manager->num_rigid_contacts + index * 3 + 2] = t_v_proj;
 }
 
 // -----------------------------------------------------------------------------
@@ -225,7 +221,7 @@ void ChConstraintRigidRigid::Setup(ChParallelDataManager* dm) {
             const real3& vN = data_manager->host_data.norm_rigid_rigid[i];
             real3 vpA = data_manager->host_data.cpta_rigid_rigid[i] + data_manager->host_data.pos_rigid[b1];
             real3 vpB = data_manager->host_data.cptb_rigid_rigid[i] + data_manager->host_data.pos_rigid[b2];
-            
+
             chrono::collision::ChCollisionInfo icontact;
             icontact.modelA = blist[b1]->GetCollisionModel().get();
             icontact.modelB = blist[b2]->GetCollisionModel().get();
@@ -438,8 +434,14 @@ void ChConstraintRigidRigid::Build_E() {
     }
     SolverMode solver_mode = data_manager->settings.solver.solver_mode;
     DynamicVector<real>& E = data_manager->host_data.E;
+    DynamicVector<real>& Reg = data_manager->host_data.Regularization;
+    Reg = DynamicVector<real>(E.size(), 0.0);
+    real alpha = data_manager->settings.solver.reg_alpha0 * data_manager->settings.solver.perfrom_regularization;
+    bool use_compliance_info = data_manager->settings.solver.use_compliance_info;
+    bool reg_tan = data_manager->settings.solver.regularize_tangential;
     uint num_contacts = data_manager->num_rigid_contacts;
     const custom_vector<real4>& compliance = data_manager->host_data.compliance_rigid_rigid;
+    const custom_vector<real3>& fric = data_manager->host_data.fric_rigid_rigid;
 
 #pragma omp parallel for
     for (int index = 0; index < (signed)data_manager->num_rigid_contacts; index++) {
@@ -449,16 +451,30 @@ void ChConstraintRigidRigid::Build_E() {
         real compliance_sliding = compliance[index].y;
         real compliance_rolling = compliance[index].z;
         real compliance_spinning = compliance[index].w;
-
+        real friction = fric[index].x;
         E[index * 1 + 0] = inv_hhpa * compliance_normal;
+        Reg[index + 0] = use_compliance_info ? alpha * compliance_normal : alpha;
+
         if (solver_mode == SolverMode::SLIDING) {
             E[num_contacts + index * 2 + 0] = inv_hhpa * compliance_sliding;
             E[num_contacts + index * 2 + 1] = inv_hhpa * compliance_sliding;
+            Reg[num_contacts + index * 2 + 0] =
+                use_compliance_info ? alpha * friction * reg_tan * compliance_sliding : alpha * friction * reg_tan;
+            Reg[num_contacts + index * 2 + 1] =
+                use_compliance_info ? alpha * friction * reg_tan * compliance_sliding : alpha * friction * reg_tan;
         } else if (solver_mode == SolverMode::SPINNING) {
             E[3 * num_contacts + index * 3 + 0] = inv_hhpa * compliance_spinning;
             E[3 * num_contacts + index * 3 + 1] = inv_hhpa * compliance_rolling;
             E[3 * num_contacts + index * 3 + 2] = inv_hhpa * compliance_rolling;
+            Reg[3 * num_contacts + index * 3 + 0] =
+                use_compliance_info ? alpha * friction * reg_tan * compliance_spinning : alpha * friction * reg_tan;
+            Reg[3 * num_contacts + index * 3 + 1] =
+                use_compliance_info ? alpha * friction * reg_tan * compliance_rolling : alpha * friction * reg_tan;
+            Reg[3 * num_contacts + index * 3 + 2] =
+                use_compliance_info ? alpha * friction * reg_tan * compliance_rolling : alpha * friction * reg_tan;
         }
+
+        /// Contact Regularization loop
     }
 }
 

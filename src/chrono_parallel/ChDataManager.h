@@ -73,7 +73,7 @@ namespace collision {
 class ChCBroadphase;           // forward declaration
 class ChCNarrowphaseDispatch;  // forward declaration
 class ChCAABBGenerator;        // forward declaration
-}
+}  // namespace collision
 
 #if BLAZE_MAJOR_VERSION == 2
 typedef blaze::SparseSubmatrix<CompressedMatrix<real>> SubMatrixType;
@@ -395,6 +395,10 @@ struct host_container {
     /// While E is the compliance matrix, in reality it is completely diagonal
     /// therefore it is stored in a vector for performance reasons.
     DynamicVector<real> E;
+
+    /// While Regularization is the compliance matrix, in reality it is completely diagonal
+    /// therefore it is stored in a vector for performance reasons.
+    DynamicVector<real> Regularization;
 
     // Contact forces (NSC)
     DynamicVector<real> Fc;

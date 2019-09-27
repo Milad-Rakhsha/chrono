@@ -44,7 +44,7 @@ uint ChSolverParallelAPGDREF::Solve(ChShurProduct& ShurProduct,
     real& objective_value = data_manager->measures.solver.objective_value;
 
     bool verbose = false;
-    bool useWarmStarting = true;
+    bool useWarmStarting = false;
     if (verbose)
         std::cout << "Number of constraints: " << size << "\nNumber of variables  : " << data_manager->num_rigid_bodies
                   << std::endl;
@@ -68,6 +68,10 @@ uint ChSolverParallelAPGDREF::Solve(ChShurProduct& ShurProduct,
     if (!useWarmStarting)
         gamma = 0.0;
 
+    if (data_manager->settings.solver.randomize_initial_guess)
+        fill_w_rand(gamma, -100, 100, 20);
+    //    if (data_manager->settings.solver.perfrom_regularization)
+    //        addRegularization(Nshur, data_manager->host_data.Regularization);
     // (2) gamma_hat_0 = ones(nc,1)
     gamma_hat = 1.0;
 
@@ -176,7 +180,6 @@ uint ChSolverParallelAPGDREF::Solve(ChShurProduct& ShurProduct,
         if (residual < data_manager->settings.solver.tol_speed) {
             // (24) break
             break;
-
             // (25) endif
         }
 

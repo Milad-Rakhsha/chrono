@@ -21,12 +21,12 @@ using namespace chrono;
 
 #define CLEAR_RESERVE_RESIZE(M, nnz, rows, cols)                                             \
     {                                                                                        \
-        uint current = (uint)M.capacity();                                                         \
+        uint current = (uint)M.capacity();                                                   \
         if (current > 0) {                                                                   \
             clear(M);                                                                        \
         }                                                                                    \
-        if (current < (unsigned)nnz) {                                                                 \
-            M.reserve(nnz * (size_t)1.1);                                                            \
+        if (current < (unsigned)nnz) {                                                       \
+            M.reserve(nnz*(size_t)1.1);                                                      \
             LOG(INFO) << "Increase Capacity of: " << str(M) << " " << current << " " << nnz; \
         }                                                                                    \
         M.resize(rows, cols, false);                                                         \
@@ -193,8 +193,8 @@ void ChIterativeSolverParallelNSC::RunTimeStep() {
     tot_iterations = (int)data_manager->measures.solver.maxd_hist.size();
 
     LOG(TRACE) << "ChIterativeSolverParallelNSC::RunTimeStep E solve: "
-               << data_manager->system_timer.GetTime("ChIterativeSolverParallel_Solve")
-               << " shur: " << data_manager->system_timer.GetTime("ShurProduct")
+               << data_manager->system_timer.GetTime("ChIterativeSolverParallel_Solve") << " shur: "
+               << data_manager->system_timer.GetTime("ShurProduct")
                //<< " residual: " << data_manager->measures.solver.residual
                //<< " objective: " << data_manager->measures.solver.maxdeltalambda_hist.back()
                << " iterations: " << tot_iterations;
@@ -345,6 +345,9 @@ void ChIterativeSolverParallelNSC::ComputeN() {
     CompressedMatrix<real>& Nshur = data_manager->host_data.Nshur;
     const CompressedMatrix<real>& M_inv = data_manager->host_data.M_inv;
     Nshur = D_T * data_manager->host_data.M_invD;
+    if (data_manager->settings.solver.perfrom_regularization)
+        addRegularization(Nshur, data_manager->host_data.Regularization);
+
     data_manager->system_timer.stop("ChIterativeSolverParallel_N");
 }
 
@@ -451,6 +454,6 @@ void ChIterativeSolverParallelNSC::ChangeSolverType(SolverType type) {
             solver = new ChSolverParallelGS();
             break;
         default:
-                break;
+            break;
     }
 }

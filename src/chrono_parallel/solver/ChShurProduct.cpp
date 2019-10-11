@@ -35,10 +35,12 @@ void ChShurProduct::operator()(const DynamicVector<real>& x, DynamicVector<real>
 
     if (data_manager->settings.solver.local_solver_mode == data_manager->settings.solver.solver_mode) {
         if (data_manager->settings.solver.compute_N) {
-            output = Nshur * x + E * x;
+            CompressedMatrix<real> tempN = Nshur;
+            if (data_manager->settings.solver.perfrom_regularization)
+                addRegularization(tempN, data_manager->host_data.Regularization);
+            output = tempN * x + E * x;
         } else {
             CompressedMatrix<real> tempN = D_T * data_manager->host_data.M_invD;
-
             if (data_manager->settings.solver.perfrom_regularization)
                 addRegularization(tempN, data_manager->host_data.Regularization);
             output = tempN * x + E * x;

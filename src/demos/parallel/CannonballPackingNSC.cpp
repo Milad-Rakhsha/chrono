@@ -40,16 +40,16 @@ bool perfrom_regularization = false;
 bool use_compliance = false;
 bool regularize_tangential = true;
 bool randomize_initials = false;
-double reg_alpha0 = 10;
+double reg_alpha0 = 1.0;
 double reg_alpha_tau = 1e-6;
 double reg_alpha_final = 9.;
 double box_mass = 1.0;
 double friction = 0.5f;
-std::string out_folder = "CannonballNSC_reg/";
+std::string out_folder = "CannonballNSC_APGD_reg/";
 
-int num_ball_x = 20;
+int num_ball_x = 5;
 double sphere_radius = 0.1;
-real tolerance = 1e-3;
+real tolerance = 0.0;
 
 // -----------------------------------------------------------------------------
 // save csv data file
@@ -61,14 +61,14 @@ void writeCSV(ChSystemParallel* msystem, int out_frame) {
     const std::string& delim = ",";
     utils::CSV_writer csv(delim);
     int numMarkers = msystem->data_manager->host_data.pos_rigid.size();
-    csv << "t,x,y,z,vx,vy,vz,|U|" << std::endl;
+    csv << "x,y,z,vx,vy,vz,|U|" << std::endl;
     for (int i = 0; i < numMarkers; i++) {
         real3 pos3 = msystem->data_manager->host_data.pos_rigid[i];
         real vx = msystem->data_manager->host_data.v[6 * i];
         real vy = msystem->data_manager->host_data.v[6 * i + 1];
         real vz = msystem->data_manager->host_data.v[6 * i + 2];
         real u = sqrt(vx * vx + vy * vy + vz * vz);
-        csv << msystem->GetChTime() << pos3.x << pos3.y << pos3.z << vx << vy << vz << std::endl;
+        csv << pos3.x << pos3.y << pos3.z << vx << vy << vz << u << std::endl;
     }
 
     csv.write_to_file(filename2);
@@ -79,7 +79,7 @@ void writeCSV(ChSystemParallel* msystem, int out_frame) {
 // -----------------------------------------------------------------------------
 void CreateModel(ChSystemParallel* sys) {
     double sphere_mass = 1.0;
-    double envelope = sphere_radius * 0.05;
+    double envelope = sphere_radius * 0.02;
 
     // Create the middle ball material
     std::shared_ptr<ChMaterialSurfaceNSC> mat = std::make_shared<ChMaterialSurfaceNSC>();
@@ -117,40 +117,15 @@ void CreateModel(ChSystemParallel* sys) {
         shift += sphere_radius;
         sphere_z += sqrt(2.0) * sphere_radius + envelope;
     }
-    double box_x = 2 * shift * 1.5;
-    ChVector<double> box_dim(box_x, box_x, 0.2);
-    ChVector<double> box_pos(shift, shift, -box_dim.z() / 2);
-    box = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>());
-    box->SetMaterialSurface(mat);
-    box->SetIdentifier(ballId);
-    box->SetMass(box_mass);
-    box->SetInertiaXX(utils::CalcBoxGyration(box_dim / 2).Get_Diag());
-    box->SetPos(box_pos);
-    box->SetRot(QUNIT);
-    box->SetBodyFixed(true);
-    box->SetCollide(true);
-    box->GetCollisionModel()->ClearModel();
-    utils::AddBoxGeometry(box.get(), box_dim / 2);
-    box->GetCollisionModel()->BuildModel();
-    sys->AddBody(box);
 }
 
 // -----------------------------------------------------------------------------
 // Create the system, specify simulation parameters, and run simulation loop.
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
-    if (!filesystem::create_directory(filesystem::path(out_folder))) {
-        std::cout << "Error creating directory " << out_folder << std::endl;
-        return 1;
-    }
-
-    const std::string removeFiles = (std::string("rm ") + out_folder + "/* ");
-    std::cout << removeFiles << std::endl;
-    system(removeFiles.c_str());
-
-    int threads = 8;
+    int threads = 1;
     int solver = 1;
-    int max_iteration = 200;
+    int max_iteration = 1000;
     bool enable_alpha_init;
     bool enable_cache_step;
 
@@ -163,14 +138,25 @@ int main(int argc, char* argv[]) {
         use_compliance = atoi(argv[3]);
         regularize_tangential = atoi(argv[4]);
     }
-    if (argc == 7) {
+    if (argc == 8) {
         solver = atoi(argv[1]);
         perfrom_regularization = atoi(argv[2]);
         use_compliance = atoi(argv[3]);
         regularize_tangential = atoi(argv[4]);
         reg_alpha0 = atof(argv[5]);
         randomize_initials = atoi(argv[6]);
+        out_folder = argv[7];
+        std::cout << out_folder << std::endl;
     }
+    if (!filesystem::create_directory(filesystem::path(out_folder))) {
+        std::cout << "Error creating directory " << out_folder << std::endl;
+        return 1;
+    }
+
+    out_folder = out_folder + "/";
+    const std::string removeFiles = (std::string("rm ") + out_folder + "/* ");
+    std::cout << removeFiles << std::endl;
+    system(removeFiles.c_str());
 
     std::cout << "solver type " << solver << ", perfrom_regularization " << perfrom_regularization << std::endl;
 
@@ -178,8 +164,8 @@ int main(int argc, char* argv[]) {
     // ---------------------
 
     double gravity = 10;
-    double time_step = 5e-3;
-    double time_end = 0.5;
+    double time_step = 1e-3;
+    double time_end = 0.2;
     double out_fps = 100;
 
     // Create system
@@ -215,10 +201,12 @@ int main(int argc, char* argv[]) {
     msystem.GetSettings()->solver.tolerance = tolerance;
     msystem.GetSettings()->solver.tol_speed = tolerance;
 
+    msystem.GetSettings()->solver.compute_N = false;
+
     msystem.GetSettings()->solver.alpha = 0;
     msystem.GetSettings()->solver.use_power_iteration = enable_alpha_init;
     msystem.GetSettings()->solver.cache_step_length = enable_cache_step;
-    msystem.GetSettings()->solver.contact_recovery_speed = 0.0;
+    msystem.GetSettings()->solver.contact_recovery_speed = -1.0;
     if (solver == 0) {
         msystem.ChangeSolverType(SolverType::JACOBI);
     } else if (solver == 1) {
@@ -293,10 +281,16 @@ int main(int argc, char* argv[]) {
             next_out_frame += out_steps;
             std::ofstream ofile(out_folder + "F_NSC_" + std::to_string(out_frame) + ".txt");
             DynamicVector<real>& gamma = msystem.data_manager->host_data.gamma;
+            custom_vector<vec2>& pairs = msystem.data_manager->host_data.bids_rigid_rigid;
+            custom_vector<real>& phi = msystem.data_manager->host_data.dpth_rigid_rigid;
+
+            ofile << "bi,bj,Fn,Ft,phi\n";
             int N = gamma.size() / 3;
-            for (int i = 0; i < N; i++)
-                ofile << gamma[i] / time_step << "," << gamma[N + 2 * i] / time_step << ","
-                      << gamma[N + 2 * i + 1] / time_step << "\n";
+            for (int i = 0; i < N; i++) {
+                real Tan = std::sqrt(gamma[N + 2 * i] * gamma[N + 2 * i] + gamma[N + 2 * i + 1] * gamma[N + 2 * i + 1]);
+                ofile << pairs[i].x << "," << pairs[i].y << "," << gamma[i] / time_step << "," << Tan / time_step << ","
+                      << phi[i] << "\n";
+            }
 
             ofile.close();
         }
@@ -309,10 +303,10 @@ int main(int argc, char* argv[]) {
     std::cout << "==============================" << std::endl
               << "solver = " << solver << std::endl
               << "perfrom_regularization = " << perfrom_regularization << std::endl
-              << "randomize_initials = " << randomize_initials << std::endl
               << "use_compliance = " << use_compliance << std::endl
               << "regularize_tangential = " << regularize_tangential << std::endl
               << "reg_alpha0 = " << reg_alpha0 << std::endl
+              << "randomize_initials = " << randomize_initials << std::endl
               << "Average itrs / step = " << total_its / num_steps << std::endl
               << "==============================" << std::endl;
 

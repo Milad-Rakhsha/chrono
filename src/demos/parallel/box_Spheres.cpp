@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
     int sim_num = 0;
     int threads = 1;
     int solver = 1;
-    int max_iteration = 200;
+    int max_iteration = 100;
     bool enable_alpha_init;
     bool enable_cache_step;
 
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     double time_end = 1;
     double out_fps = 10;
 
-    real tolerance = 1e-6;
+    real tolerance = 0.0;
 
     // Create system
     // -------------
@@ -223,7 +223,8 @@ int main(int argc, char* argv[]) {
     msystem.GetSettings()->solver.max_iteration_sliding = max_iteration;
     msystem.GetSettings()->solver.max_iteration_spinning = 0;
     msystem.GetSettings()->solver.max_iteration_bilateral = 0;
-    msystem.GetSettings()->solver.tolerance = tolerance / time_step;
+    msystem.GetSettings()->solver.tolerance = tolerance;
+    msystem.GetSettings()->solver.tol_speed = tolerance;
     msystem.GetSettings()->solver.alpha = 0;
     msystem.GetSettings()->solver.use_power_iteration = enable_alpha_init;
     msystem.GetSettings()->solver.cache_step_length = enable_cache_step;

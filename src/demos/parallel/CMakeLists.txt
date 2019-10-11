@@ -36,6 +36,7 @@ SET(DEMOS
     box_Spheres
     CannonballPackingNSC
     CannonballPackingSMC
+    CannonballPackingNSC_Chrono
     demo_PAR_DamBreak
     demo_PAR_DamBreak_w_cylinder
 )

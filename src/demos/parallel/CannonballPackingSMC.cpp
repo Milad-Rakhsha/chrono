@@ -39,7 +39,8 @@ std::shared_ptr<ChBody> box;
 double box_mass = 1.0;
 double friction = 0.5f;
 std::string out_folder = "CannonballSMC/";
-int num_ball_x = 20;
+int num_ball_x = 5;
+
 double sphere_radius = 0.1;
 // -----------------------------------------------------------------------------
 // save csv data file
@@ -69,11 +70,11 @@ void writeCSV(ChSystemParallel* msystem, int out_frame) {
 // -----------------------------------------------------------------------------
 void CreateModel(ChSystemParallel* sys) {
     double sphere_mass = 1.0;
-    double envelope = sphere_radius * 0.05;
+    double envelope = sphere_radius * 0.02;
 
     // Create the middle ball material
     // Material properties (same on bin and balls)
-    float Y = 1e8f;
+    float Y = 1e10f;
     float cr = 0.0f;
     auto mat = std::make_shared<ChMaterialSurfaceSMC>();
     mat->SetFriction(friction);
@@ -114,28 +115,19 @@ void CreateModel(ChSystemParallel* sys) {
         shift += sphere_radius;
         sphere_z += sqrt(2.0) * sphere_radius + envelope;
     }
-    double box_x = 2 * shift * 1.5;
-    ChVector<double> box_dim(box_x, box_x, 0.2);
-    ChVector<double> box_pos(shift, shift, -box_dim.z() / 2);
-    box = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>(), ChMaterialSurface::SMC);
-    box->SetMaterialSurface(mat);
-    box->SetIdentifier(ballId);
-    box->SetMass(box_mass);
-    box->SetInertiaXX(utils::CalcBoxGyration(box_dim / 2).Get_Diag());
-    box->SetPos(box_pos);
-    box->SetRot(QUNIT);
-    box->SetBodyFixed(true);
-    box->SetCollide(true);
-    box->GetCollisionModel()->ClearModel();
-    utils::AddBoxGeometry(box.get(), box_dim / 2);
-    box->GetCollisionModel()->BuildModel();
-    sys->AddBody(box);
 }
 
 // -----------------------------------------------------------------------------
 // Create the system, specify simulation parameters, and run simulation loop.
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
+    // Simulation parameters
+    // ---------------------
+    double gravity = 10;
+    double time_step = 2e-5;
+    double time_end = 0.20;
+    double out_fps = 100;
+
     if (!filesystem::create_directory(filesystem::path(out_folder))) {
         std::cout << "Error creating directory " << out_folder << std::endl;
         return 1;
@@ -146,26 +138,10 @@ int main(int argc, char* argv[]) {
     system(removeFiles.c_str());
 
     int threads = 8;
-    int solver = 1;
-    int max_iteration = 200;
-    bool enable_alpha_init;
-    bool enable_cache_step;
-
-    // Simulation parameters
-    // ---------------------
-
-    double gravity = 10;
-    double time_step = 5e-5;
-    double time_end = 0.5;
-    double out_fps = 100;
-
-    real tolerance = 1e-8;
 
     // Create system
     // -------------
-
     ChSystemParallelSMC msystem;
-
     // Set number of threads.
     int max_threads = CHOMPfunctions::GetNumProcs();
     if (threads > max_threads)
@@ -220,25 +196,27 @@ int main(int argc, char* argv[]) {
     }
 #else
 
-    std::ofstream ofile("residual" + std::to_string(solver) + ".txt");
     // Run simulation for specified time
     for (int i = 0; i < num_steps; i++) {
         msystem.DoStepDynamics(time_step);
-        std::cout << time << " " << msystem.data_manager->measures.solver.residual << " "
-                  << msystem.data_manager->measures.solver.total_iteration << " "
-                  << msystem.data_manager->system_timer.GetTime("ChLcpSolverParallel_Solve") << std::endl;
-        total_its += msystem.data_manager->measures.solver.total_iteration;
 
         // If enabled, output data for PovRay postprocessing.
         if (i == next_out_frame) {
+            std::cout << time << ", Nc= " << msystem.data_manager->host_data.bids_rigid_rigid.size() << std::endl;
+
             writeCSV(&msystem, out_frame);
             out_frame++;
             next_out_frame += out_steps;
             std::ofstream ofile(out_folder + "F_SCM_" + std::to_string(out_frame) + ".txt");
-            custom_vector<real3>& gamma = msystem.data_manager->host_data.ct_body_force;
-            int N = gamma.size();
+
+            custom_vector<vec2>& pairs = msystem.data_manager->host_data.bids_rigid_rigid;
+            custom_vector<real3>& gamma_N = msystem.data_manager->host_data.contact_force_N;
+            custom_vector<real3>& gamma_T = msystem.data_manager->host_data.contact_force_T;
+            ofile << "bi,bj,Fn,Ft\n";
+
+            int N = pairs.size();
             for (int i = 0; i < N; i++)
-                ofile << gamma[i].x / time_step << "," << gamma[i].y / time_step << "," << gamma[i].z / time_step
+                ofile << pairs[i].x << "," << pairs[i].y << "," << Length(gamma_N[i]) << "," << Length(gamma_T[i])
                       << "\n";
 
             ofile.close();
@@ -246,7 +224,6 @@ int main(int argc, char* argv[]) {
 
         time += time_step;
     }
-    ofile.close();
 
 #endif
 

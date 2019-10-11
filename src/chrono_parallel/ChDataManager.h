@@ -289,9 +289,10 @@ struct host_container {
     // Contact forces (SMC)
     // These vectors hold the total contact force and torque, respectively,
     // for bodies that are involved in at least one contact.
-    custom_vector<real3> ct_body_force;   ///< Total contact force on bodies
-    custom_vector<real3> ct_body_torque;  ///< Total contact torque on these bodies
-
+    custom_vector<real3> ct_body_force;    ///< Total contact force on bodies
+    custom_vector<real3> ct_body_torque;   ///< Total contact torque on these bodies
+    custom_vector<real3> contact_force_N;  ///< Contact forces N
+    custom_vector<real3> contact_force_T;  ///< Contact forces T
     // Contact shear history (SMC)
     custom_vector<vec3> shear_neigh;  ///< Neighbor list of contacting bodies and shapes
     custom_vector<real3> shear_disp;  ///< Accumulated shear displacement for each neighbor

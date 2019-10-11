@@ -116,6 +116,8 @@ class CH_PARALLEL_API ChIterativeSolverParallelSMC : public ChIterativeSolverPar
     void host_CalcContactForces(custom_vector<int>& ext_body_id,
                                 custom_vector<real3>& ext_body_force,
                                 custom_vector<real3>& ext_body_torque,
+                                custom_vector<real3>& contact_force_N,
+                                custom_vector<real3>& contact_force_T,
                                 custom_vector<vec2>& shape_pairs,
                                 custom_vector<char>& shear_touch);
 
@@ -126,4 +128,4 @@ class CH_PARALLEL_API ChIterativeSolverParallelSMC : public ChIterativeSolverPar
 
 /// @} parallel_solver
 
-} // end namespace chrono
+}  // end namespace chrono

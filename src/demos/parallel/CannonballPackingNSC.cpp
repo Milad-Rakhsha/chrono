@@ -47,7 +47,7 @@ double box_mass = 1.0;
 double friction = 0.5f;
 std::string out_folder = "CannonballNSC_APGD_reg/";
 
-int num_ball_x = 5;
+int num_ball_x = 20;
 double sphere_radius = 0.1;
 real tolerance = 0.0;
 
@@ -125,7 +125,7 @@ void CreateModel(ChSystemParallel* sys) {
 int main(int argc, char* argv[]) {
     int threads = 1;
     int solver = 1;
-    int max_iteration = 1000;
+    int max_iteration = 2000;
     bool enable_alpha_init;
     bool enable_cache_step;
 

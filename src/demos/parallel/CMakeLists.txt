@@ -34,6 +34,7 @@ SET(DEMOS
     demo_PAR_friction
     Tikhonov
     box_Spheres
+    box_SpheresSMC
     CannonballPackingNSC
     CannonballPackingSMC
     CannonballPackingNSC_Chrono

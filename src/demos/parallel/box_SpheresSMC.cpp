@@ -26,8 +26,7 @@
 #include "chrono_thirdparty/filesystem/path.h"
 #include "chrono_thirdparty/filesystem/resolver.h"
 
-#include "chrono_parallel/physics/Ch3DOFContainer.h"
-
+std::string out_folder = "Box_Spheres/";
 #ifdef CHRONO_OPENGL
 #include "chrono_opengl/ChOpenGLWindow.h"
 #endif
@@ -37,9 +36,8 @@ using namespace chrono::collision;
 std::shared_ptr<ChBody> box;
 
 double box_mass = 1.0;
-double friction = 0.5f;
-std::string out_folder = "CannonballSMC_20particle/";
-int num_ball_x = 20;
+double friction = 0.1f;
+ChVector<> hdim(2, 2, 0.1);
 
 double sphere_radius = 0.1;
 // -----------------------------------------------------------------------------
@@ -69,51 +67,71 @@ void writeCSV(ChSystemParallel* msystem, int out_frame) {
 // Create the falling spherical objects in a uniform rectangular grid.
 // -----------------------------------------------------------------------------
 void CreateModel(ChSystemParallel* sys) {
+    double envelope = sphere_radius * 0.05;
     double sphere_mass = 1.0;
-    double envelope = sphere_radius * 0.02;
+    double sphere_radius = 0.1;
+    double sphere_z = -sphere_radius;
+    double box_z = sphere_z + sphere_radius + hdim.z() + envelope;
 
     // Create the middle ball material
     // Material properties (same on bin and balls)
-    float Y = 1e10f;
+    float Y = 1e8;
     float cr = 0.0f;
     auto mat = std::make_shared<ChMaterialSurfaceSMC>();
     mat->SetFriction(friction);
+
     mat->SetYoungModulus(Y);
+    mat->SetPoissonRatio(0.4);
+    //    sys->GetSettings()->solver.use_material_properties = false;
+    //    mat->SetKn(1e10);
+    //    mat->SetGn(10);
+    //    mat->SetKt(1e10);
+    //    mat->SetGt(10);
+
+    //    sys->GetSettings()->solver.tangential_displ_mode == ChSystemSMC::TangentialDisplacementModel::MultiStep;
     mat->SetRestitution(cr);
     mat->SetAdhesion(0);  // Magnitude of the adhesion in Constant adhesion model
-
     int ballId = 0;
+
+    ChVector<> box_pos = ChVector<>(0, 0, box_z);
+    box = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>(), ChMaterialSurface::SMC);
+    box->SetMaterialSurface(mat);
+    box->SetIdentifier(ballId);
+    box->SetMass(box_mass);
+    box->SetInertiaXX(utils::CalcBoxGyration(hdim).Get_Diag());
+    box->SetPos(box_pos);
+    box->SetRot(ChQuaternion<>(1, 0, 0, 0));
+    box->SetBodyFixed(false);
+    box->SetCollide(true);
+    box->GetCollisionModel()->ClearModel();
+    utils::AddBoxGeometry(box.get(), hdim);
+    box->GetCollisionModel()->BuildModel();
+    sys->AddBody(box);
+    ballId++;
+
     double mass = 1.0;
     ChVector<> inertia = (2.0 / 5.0) * mass * sphere_radius * sphere_radius * ChVector<>(1, 1, 1);
 
-    int _num_ball_ = num_ball_x;
-    double sphere_z = sphere_radius;
-    double shift = 0;
-    while (_num_ball_ >= 0) {
-        for (int x = 0; x <= _num_ball_; x++) {
-            for (int y = 0; y <= _num_ball_; y++) {
-                ChVector<> pos = ChVector<>(x * sphere_radius * 2 + shift, y * sphere_radius * 2 + shift, sphere_z);
-                auto ball =
-                    std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>(), ChMaterialSurface::SMC);
-                ball->SetMaterialSurface(mat);
-                ball->SetIdentifier(ballId);
-                ball->SetMass(mass);
-                ball->SetInertiaXX(inertia);
-                ball->SetPos(pos);
-                ball->SetRot(ChQuaternion<>(1, 0, 0, 0));
-                ball->SetBodyFixed(_num_ball_ == num_ball_x);
-                ball->SetCollide(true);
-                ball->GetCollisionModel()->ClearModel();
-                utils::AddSphereGeometry(ball.get(), sphere_radius);
-                ball->GetCollisionModel()->BuildModel();
-                sys->AddBody(ball);
-                ballId++;
-            }
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            if ((x * y == 0) && (x + y != 0))
+                continue;
+            ChVector<> pos = ChVector<>(x, y, sphere_z);
+            auto ball = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>(), ChMaterialSurface::SMC);
+            ball->SetMaterialSurface(mat);
+            ball->SetIdentifier(ballId);
+            ball->SetMass(mass);
+            ball->SetInertiaXX(inertia);
+            ball->SetPos(pos);
+            ball->SetRot(ChQuaternion<>(1, 0, 0, 0));
+            ball->SetBodyFixed(true);
+            ball->SetCollide(true);
+            ball->GetCollisionModel()->ClearModel();
+            utils::AddSphereGeometry(ball.get(), sphere_radius);
+            ball->GetCollisionModel()->BuildModel();
+            sys->AddBody(ball);
+            ballId++;
         }
-        printf("%d ball were added.\n", ballId);
-        _num_ball_--;
-        shift += sphere_radius;
-        sphere_z += sqrt(2.0) * sphere_radius + envelope;
     }
 }
 
@@ -124,9 +142,11 @@ int main(int argc, char* argv[]) {
     // Simulation parameters
     // ---------------------
     double gravity = 10;
-    double time_step = 2e-5;
-    double time_end = 0.20;
-    double out_fps = 100;
+    double time_step = 1e-4;
+    double time_end = 0.5;
+    double out_fps = 1000;
+
+    double push = atof(argv[1]);
 
     if (!filesystem::create_directory(filesystem::path(out_folder))) {
         std::cout << "Error creating directory " << out_folder << std::endl;
@@ -151,11 +171,9 @@ int main(int argc, char* argv[]) {
 
     // Set gravitational acceleration
     msystem.Set_G_acc(ChVector<>(0, 0, -gravity));
-
     msystem.GetSettings()->collision.narrowphase_algorithm = NarrowPhaseType::NARROWPHASE_HYBRID_MPR;
     msystem.GetSettings()->collision.collision_envelope = 1e-4;
     msystem.GetSettings()->collision.bins_per_axis = vec3(10, 10, 10);
-
     // Create the fixed and moving bodies
     // ----------------------------------
 
@@ -163,7 +181,6 @@ int main(int argc, char* argv[]) {
 
     // Perform the simulation
     // ----------------------
-    int total_its = 0;
     int num_steps = std::ceil(time_end / time_step);
     int out_steps = std::ceil((1.0 / time_step) / out_fps);
     int out_frame = 0;
@@ -176,8 +193,7 @@ int main(int argc, char* argv[]) {
 #if 0
     opengl::ChOpenGLWindow& gl_window = opengl::ChOpenGLWindow::getInstance();
     gl_window.Initialize(1280, 720, "ballsDVI", &msystem);
-    double tmp = num_ball_x * sphere_radius;
-    gl_window.SetCamera(ChVector<>(tmp, -tmp, tmp), ChVector<>(tmp, tmp, 0), ChVector<>(0, 0, 1));
+    gl_window.SetCamera(ChVector<>(0, -3, 0), ChVector<>(0, -2, 0), ChVector<>(0, 0, 1));
     gl_window.Pause();
     // Uncomment the following two lines for the OpenGL manager to automatically
     // run the simulation in an infinite loop.
@@ -189,23 +205,25 @@ int main(int argc, char* argv[]) {
             gl_window.DoStepDynamics(time_step);
             gl_window.Render();
             time += time_step;
-            //            msystem.CalculateContactForces();
-            //            real3 frc = msystem.GetBodyContactForce(0);
-            //            std::cout << frc.x << "  " << frc.y << "  " << frc.z << std::endl;
         }
     }
 #else
-
     // Run simulation for specified time
     for (int i = 0; i < num_steps; i++) {
-        msystem.DoStepDynamics(time_step);
+        double t = msystem.GetChTime();
+        double f = push * friction * box_mass * gravity;
 
+        if (t > 0.1) {
+            box->Empty_forces_accumulators();
+            box->Accumulate_force(ChVector<>(f, 0, 0), ChVector<>(0, 0, -hdim.z()), true);
+        }
+        msystem.DoStepDynamics(time_step);
         // If enabled, output data for PovRay postprocessing.
         if (i == next_out_frame) {
             std::cout << time << ", Nc= " << msystem.data_manager->host_data.bids_rigid_rigid.size() << std::endl;
+            printf("tangential force =%f\n", f);
 
             writeCSV(&msystem, out_frame);
-            out_frame++;
             next_out_frame += out_steps;
             std::ofstream ofile(out_folder + "F_SCM_" + std::to_string(out_frame) + ".txt");
 
@@ -213,12 +231,12 @@ int main(int argc, char* argv[]) {
             custom_vector<real3>& gamma_N = msystem.data_manager->host_data.contact_force_N;
             custom_vector<real3>& gamma_T = msystem.data_manager->host_data.contact_force_T;
             ofile << "bi,bj,Fn,Ft\n";
-
             int N = pairs.size();
             std::cout << "num contacts: " << N << std::endl;
             for (int i = 0; i < N; i++)
                 ofile << pairs[i].x << "," << pairs[i].y << "," << Length(gamma_N[i]) << "," << Length(gamma_T[i])
                       << "\n";
+            out_frame++;
 
             ofile.close();
         }

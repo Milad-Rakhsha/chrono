@@ -47,7 +47,7 @@ double box_mass = 1.0;
 double friction = 0.5f;
 std::string out_folder = "CannonballNSC_APGD_reg/";
 
-int num_ball_x = 20;
+int num_ball_x = 5;
 double sphere_radius = 0.1;
 real tolerance = 0.0;
 
@@ -125,7 +125,7 @@ void CreateModel(ChSystemParallel* sys) {
 int main(int argc, char* argv[]) {
     int threads = 1;
     int solver = 1;
-    int max_iteration = 2000;
+    int max_iteration = 1000;
     bool enable_alpha_init;
     bool enable_cache_step;
 
@@ -279,10 +279,21 @@ int main(int argc, char* argv[]) {
             writeCSV(&msystem, out_frame);
             out_frame++;
             next_out_frame += out_steps;
-            std::ofstream ofile(out_folder + "F_NSC_" + std::to_string(out_frame) + ".txt");
             DynamicVector<real>& gamma = msystem.data_manager->host_data.gamma;
             custom_vector<vec2>& pairs = msystem.data_manager->host_data.bids_rigid_rigid;
             custom_vector<real>& phi = msystem.data_manager->host_data.dpth_rigid_rigid;
+            int Nb = msystem.data_manager->num_rigid_bodies;
+            std::ofstream obfile(out_folder + "F_NSC_body_" + std::to_string(out_frame) + ".txt");
+            obfile << "i,fx,fy,fz\n";
+
+            DynamicVector<real> body_f = msystem.data_manager->host_data.D * gamma;
+
+            for (int i = 0; i < Nb; i++) {
+                obfile << i << "," << body_f[i * 6 + 0] << "," << body_f[i * 6 + 1] << "," << body_f[i * 6 + 2] << "\n";
+            }
+            obfile.close();
+
+            std::ofstream ofile(out_folder + "F_NSC_" + std::to_string(out_frame) + ".txt");
 
             ofile << "bi,bj,Fn,Ft,phi\n";
             int N = gamma.size() / 3;

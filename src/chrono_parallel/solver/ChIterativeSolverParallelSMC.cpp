@@ -85,7 +85,7 @@ void function_CalcContactForces(
     real* contact_duration,  // accumulates duration of persistant contact between contact pairs
     int* ext_body_id,        // [output] body IDs (two per contact)
     real3* ext_body_force,   // [output] body force (two per contact)
-    real3* ext_body_torque   // [output] body torque (two per contact)
+    real3* ext_body_torque,   // [output] body torque (two per contact)
     real3* contact_force_N,  // [output] contact force N (one per contact)
     real3* contact_force_T   // [output] contact force T (one per contact)
     ) {
@@ -491,16 +491,9 @@ void function_CalcContactForces(
     } 
 
     // Accumulate normal and tangential forces
-<<<<<<< HEAD
-    real3 force = forceN_mag * normal[index];
-    contact_force_N[index] = force;
+    contact_force_N[index] = forceN_mag * normal[index];
     contact_force_T[index] = forceT_stiff + forceT_damp;
-
-    force -= forceT_stiff;
-    force -= forceT_damp;
-=======
     real3 force = forceN_mag * normal[index] - forceT;
->>>>>>> main/develop
 
     // Body forces (in global frame) & torques (in local frame)
     // --------------------------------------------------------
@@ -607,17 +600,10 @@ void ChIterativeSolverParallelSMC::host_CalcContactForces(custom_vector<int>& ex
             data_manager->host_data.adhesionMultDMT_data.data(), data_manager->host_data.adhesionSPerko_data.data(),
             data_manager->host_data.bids_rigid_rigid.data(), shape_pairs.data(), data_manager->host_data.cpta_rigid_rigid.data(),
             data_manager->host_data.cptb_rigid_rigid.data(), data_manager->host_data.norm_rigid_rigid.data(),
-<<<<<<< HEAD
-            data_manager->host_data.dpth_rigid_rigid.data(), data_manager->host_data.erad_rigid_rigid.data(),
-            data_manager->host_data.shear_neigh.data(), shear_touch.data(), data_manager->host_data.shear_disp.data(),
-            ext_body_id.data(), ext_body_force.data(), ext_body_torque.data(), contact_force_N.data(),
-            contact_force_T.data());
-=======
             data_manager->host_data.dpth_rigid_rigid.data(), data_manager->host_data.erad_rigid_rigid.data(), 
             data_manager->host_data.shear_neigh.data(), shear_touch.data(), data_manager->host_data.shear_disp.data(), 
-            data_manager->host_data.contact_relvel_init.data(), data_manager->host_data.contact_duration.data(), ext_body_id.data(), 
-            ext_body_force.data(), ext_body_torque.data());
->>>>>>> main/develop
+            data_manager->host_data.contact_relvel_init.data(), data_manager->host_data.contact_duration.data(), ext_body_id.data(),ext_body_force.data(), ext_body_torque.data(),contact_force_N.data(),
+            contact_force_T.data());
     }
 }
 

@@ -436,7 +436,7 @@ void ChConstraintRigidRigid::Build_E() {
     DynamicVector<real>& E = data_manager->host_data.E;
     DynamicVector<real>& Reg = data_manager->host_data.Regularization;
     Reg = DynamicVector<real>(E.size(), 0.0);
-    real alpha = data_manager->settings.solver.reg_alpha0 * data_manager->settings.solver.perfrom_regularization;
+    bool alpha = data_manager->settings.solver.reg_alpha0 * data_manager->settings.solver.perfrom_regularization;
     bool use_compliance_info = data_manager->settings.solver.use_compliance_info;
     bool reg_tan = data_manager->settings.solver.regularize_tangential;
     uint num_contacts = data_manager->num_rigid_contacts;
@@ -459,19 +459,19 @@ void ChConstraintRigidRigid::Build_E() {
             E[num_contacts + index * 2 + 0] = inv_hhpa * compliance_sliding;
             E[num_contacts + index * 2 + 1] = inv_hhpa * compliance_sliding;
             Reg[num_contacts + index * 2 + 0] =
-                use_compliance_info ? alpha * friction * reg_tan * compliance_sliding : alpha * friction * reg_tan;
+                use_compliance_info ? alpha * reg_tan * compliance_sliding : alpha * reg_tan;
             Reg[num_contacts + index * 2 + 1] =
-                use_compliance_info ? alpha * friction * reg_tan * compliance_sliding : alpha * friction * reg_tan;
+                use_compliance_info ? alpha * reg_tan * compliance_sliding : alpha * reg_tan;
         } else if (solver_mode == SolverMode::SPINNING) {
             E[3 * num_contacts + index * 3 + 0] = inv_hhpa * compliance_spinning;
             E[3 * num_contacts + index * 3 + 1] = inv_hhpa * compliance_rolling;
             E[3 * num_contacts + index * 3 + 2] = inv_hhpa * compliance_rolling;
             Reg[3 * num_contacts + index * 3 + 0] =
-                use_compliance_info ? alpha * friction * reg_tan * compliance_spinning : alpha * friction * reg_tan;
+                use_compliance_info ? alpha * reg_tan * compliance_spinning : alpha * reg_tan;
             Reg[3 * num_contacts + index * 3 + 1] =
-                use_compliance_info ? alpha * friction * reg_tan * compliance_rolling : alpha * friction * reg_tan;
+                use_compliance_info ? alpha * reg_tan * compliance_rolling : alpha * reg_tan;
             Reg[3 * num_contacts + index * 3 + 2] =
-                use_compliance_info ? alpha * friction * reg_tan * compliance_rolling : alpha * friction * reg_tan;
+                use_compliance_info ? alpha * reg_tan * compliance_rolling : alpha * reg_tan;
         }
 
         /// Contact Regularization loop

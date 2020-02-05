@@ -15,6 +15,7 @@
 #include "chrono_vehicle/ChPart.h"
 
 #include "chrono_vehicle/wheeled_vehicle/ChSuspension.h"
+
 #include "chrono_vehicle/wheeled_vehicle/suspension/ChDoubleWishbone.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/ChMacPhersonStrut.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/ChLeafspringAxle.h"
@@ -27,6 +28,9 @@
 #include "chrono_vehicle/wheeled_vehicle/suspension/ChSolidAxle.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/ChThreeLinkIRS.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/ChToeBarLeafspringAxle.h"
+#include "chrono_vehicle/wheeled_vehicle/suspension/ChSolidBellcrankThreeLinkAxle.h"
+#include "chrono_vehicle/wheeled_vehicle/suspension/ChSolidThreeLinkAxle.h"
+
 #include "chrono_vehicle/wheeled_vehicle/suspension/DoubleWishbone.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/DoubleWishboneReduced.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/HendricksonPRIMAXX.h"
@@ -37,6 +41,8 @@
 #include "chrono_vehicle/wheeled_vehicle/suspension/SolidAxle.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/ThreeLinkIRS.h"
 #include "chrono_vehicle/wheeled_vehicle/suspension/ToeBarLeafspringAxle.h"
+#include "chrono_vehicle/wheeled_vehicle/suspension/SolidBellcrankThreeLinkAxle.h"
+#include "chrono_vehicle/wheeled_vehicle/suspension/SolidThreeLinkAxle.h"
 
 #include "chrono_thirdparty/rapidjson/document.h"
 
@@ -66,7 +72,10 @@
 %shared_ptr(chrono::vehicle::SolidAxle)
 %shared_ptr(chrono::vehicle::ThreeLinkIRS)
 %shared_ptr(chrono::vehicle::ToeBarLeafspringAxle)
-
+%shared_ptr(chrono::vehicle::ChSolidBellcrankThreeLinkAxle)
+%shared_ptr(chrono::vehicle::ChSolidThreeLinkAxle)
+%shared_ptr(chrono::vehicle::SolidBellcrankThreeLinkAxle)
+%shared_ptr(chrono::vehicle::SolidThreeLinkAxle)
 
 %import(module = "pychrono.core") "ChShaft.i"
 %import "../chrono_vehicle/ChPart.h"
@@ -92,6 +101,9 @@
 %include "../chrono_vehicle/wheeled_vehicle/suspension/ChSolidAxle.h"
 %include "../chrono_vehicle/wheeled_vehicle/suspension/ChThreeLinkIRS.h"
 %include "../chrono_vehicle/wheeled_vehicle/suspension/ChToeBarLeafspringAxle.h"
+%include "../chrono_vehicle/wheeled_vehicle/suspension/ChSolidBellcrankThreeLinkAxle.h"
+%include "../chrono_vehicle/wheeled_vehicle/suspension/ChSolidThreeLinkAxle.h"
+
 %include "../chrono_vehicle/wheeled_vehicle/suspension/DoubleWishbone.h"
 %include "../chrono_vehicle/wheeled_vehicle/suspension/DoubleWishboneReduced.h"
 %include "../chrono_vehicle/wheeled_vehicle/suspension/HendricksonPRIMAXX.h"
@@ -102,4 +114,38 @@
 %include "../chrono_vehicle/wheeled_vehicle/suspension/SolidAxle.h"
 %include "../chrono_vehicle/wheeled_vehicle/suspension/ThreeLinkIRS.h"
 %include "../chrono_vehicle/wheeled_vehicle/suspension/ToeBarLeafspringAxle.h"
+%include "../chrono_vehicle/wheeled_vehicle/suspension/SolidBellcrankThreeLinkAxle.h"
+%include "../chrono_vehicle/wheeled_vehicle/suspension/SolidThreeLinkAxle.h"
+
 %include "models/SuspensionModels.i"
+
+
+//
+// C- DOWNCASTING OF SHARED POINTERS
+//
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChDoubleWishbone)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChMacPhersonStrut)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, MacPhersonStrut)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChLeafspringAxle)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, LeafspringAxle)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChHendricksonPRIMAXX)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChDoubleWishboneReduced)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChMultiLink)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, MultiLink)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChRigidPinnedAxle)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChSemiTrailingArm)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, SemiTrailingArm)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChRigidSuspension)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChSolidAxle)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChThreeLinkIRS)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChToeBarLeafspringAxle)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, DoubleWishbone)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, DoubleWishboneReduced)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, HendricksonPRIMAXX)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, SolidAxle)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ThreeLinkIRS)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ToeBarLeafspringAxle)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChSolidBellcrankThreeLinkAxle)
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, ChSolidThreeLinkAxle)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, SolidBellcrankThreeLinkAxle)
+//%DefSharedPtrDynamicDowncast(chrono::vehicle,ChSuspension, SolidThreeLinkAxle)

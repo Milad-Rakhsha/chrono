@@ -18,7 +18,6 @@
 #include "chrono/physics/ChLinkMotorRotationAngle.h"
 #include "chrono/physics/ChLoadContainer.h"
 #include "chrono/physics/ChSystemSMC.h"
-#include "chrono/solver/ChSolverMINRES.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
 #include "chrono_irrlicht/ChIrrApp.h"
@@ -84,7 +83,7 @@ int main(int argc, char* argv[]) {
     mrigidbody->SetInertiaXX(ChVector<>(20, 20, 20));
     mrigidbody->SetPos(tire_center + ChVector<>(0, 0.3, 0));
 
-    auto trimesh = std::make_shared<geometry::ChTriangleMeshConnected>();
+    auto trimesh = chrono_types::make_shared<geometry::ChTriangleMeshConnected>();
     trimesh->LoadWavefrontMesh(GetChronoDataFile("tractor_wheel.obj"));
 
     std::shared_ptr<ChTriangleMeshShape> mrigidmesh(new ChTriangleMeshShape);
@@ -100,9 +99,9 @@ int main(int argc, char* argv[]) {
     mcol->SetColor(ChColor(0.3f, 0.3f, 0.3f));
     mrigidbody->AddAsset(mcol);
 
-    auto motor = std::make_shared<ChLinkMotorRotationAngle>();
+    auto motor = chrono_types::make_shared<ChLinkMotorRotationAngle>();
     motor->SetSpindleConstraint(ChLinkMotorRotation::SpindleConstraint::OLDHAM);
-    motor->SetAngleFunction(std::make_shared<ChFunction_Ramp>(0, CH_C_PI / 4.0));
+    motor->SetAngleFunction(chrono_types::make_shared<ChFunction_Ramp>(0, CH_C_PI / 4.0));
     motor->Initialize(mrigidbody, mtruss, ChFrame<>(tire_center, Q_from_AngAxis(CH_C_PI_2, VECT_Y)));
     my_system.Add(motor);
 
@@ -174,9 +173,6 @@ int main(int argc, char* argv[]) {
 
     // Use shadows in realtime view
     application.AddShadowAll();
-
-    // ==IMPORTANT!== Mark completion of system construction
-    my_system.SetupInitial();
 
     //
     // THE SOFT-REAL-TIME CYCLE

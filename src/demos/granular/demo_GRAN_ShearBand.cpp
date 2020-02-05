@@ -18,26 +18,21 @@
 
 #include <iostream>
 #include <string>
-#ifdef _WINDOWS
-#define _USE_MATH_DEFINES
-#include <math.h>
-#endif
+#include <cmath>
 #include "chrono_thirdparty/filesystem/path.h"
+#include "chrono_granular/api/ChApiGranularChrono.h"
 #include "chrono_granular/physics/ChGranular.h"
 #include "chrono_granular/utils/ChGranularJsonParser.h"
 #include "chrono/utils/ChUtilsSamplers.h"
 
 using namespace chrono;
 using namespace chrono::granular;
-using std::cout;
-using std::endl;
-using std::string;
 
 // -----------------------------------------------------------------------------
 // Show command line usage
 // -----------------------------------------------------------------------------
-void ShowUsage() {
-    cout << "usage: ./demo_GRAN_ShearBand <json_file>" << endl;
+void ShowUsage(std::string name) {
+    std::cout << "usage: " + name + " <json_file>" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -45,13 +40,17 @@ int main(int argc, char* argv[]) {
 
     // Some of the default values might be overwritten by user via command line
     if (argc != 2 || ParseJSON(argv[1], params) == false) {
-        ShowUsage();
+        ShowUsage(argv[0]);
         return 1;
     }
 
     // Setup simulation
     ChSystemGranularSMC gran_sys(params.sphere_radius, params.sphere_density,
                                  make_float3(params.box_X, params.box_Y, params.box_Z));
+
+    ChGranularSMC_API apiSMC;
+    apiSMC.setGranSystem(&gran_sys);
+
     gran_sys.setPsiFactors(params.psi_T, params.psi_L);
 
     gran_sys.set_K_n_SPH2SPH(params.normalStiffS2S);
@@ -63,13 +62,12 @@ int main(int argc, char* argv[]) {
     gran_sys.set_K_t_SPH2WALL(params.tangentStiffS2W);
     gran_sys.set_Gamma_t_SPH2SPH(params.tangentDampS2S);
     gran_sys.set_Gamma_t_SPH2WALL(params.tangentDampS2W);
-    gran_sys.set_static_friction_coeff_SPH2SPH(params.static_friction_coeff);
-    gran_sys.set_static_friction_coeff_SPH2WALL(params.static_friction_coeff);
+    gran_sys.set_static_friction_coeff_SPH2SPH(params.static_friction_coeffS2S);
+    gran_sys.set_static_friction_coeff_SPH2WALL(params.static_friction_coeffS2W);
 
     gran_sys.set_Cohesion_ratio(params.cohesion_ratio);
     gran_sys.set_Adhesion_ratio_S2W(params.adhesion_ratio_s2w);
     gran_sys.set_gravitational_acceleration(params.grav_X, params.grav_Y, params.grav_Z);
-    gran_sys.setOutputDirectory(params.output_dir);
     gran_sys.setOutputMode(params.write_mode);
     filesystem::create_directory(filesystem::path(params.output_dir));
 
@@ -81,7 +79,7 @@ int main(int argc, char* argv[]) {
     std::vector<ChVector<float>> body_points =
         utils::PDLayerSampler_BOX<float>(center, hdims, 2. * params.sphere_radius, 1.05);
 
-    gran_sys.setParticlePositions(body_points);
+    apiSMC.setElemsPositions(body_points);
 
     // Set the position of the BD
     gran_sys.set_BD_Fixed(true);

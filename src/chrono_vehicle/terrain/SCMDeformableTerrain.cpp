@@ -31,10 +31,6 @@
 #include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
 
 #include "chrono_thirdparty/Easy_BMP/EasyBMP.h"
-#include "chrono_thirdparty/rapidjson/document.h"
-#include "chrono_thirdparty/rapidjson/filereadstream.h"
-
-using namespace rapidjson;
 
 namespace chrono {
 namespace vehicle {
@@ -43,7 +39,7 @@ namespace vehicle {
 // Implementation of the SCMDeformableTerrain wrapper class
 // -----------------------------------------------------------------------------
 SCMDeformableTerrain::SCMDeformableTerrain(ChSystem* system) {
-    m_ground = std::make_shared<SCMDeformableSoil>(system);
+    m_ground = chrono_types::make_shared<SCMDeformableSoil>(system);
     system->Add(m_ground);
 }
     
@@ -841,7 +837,7 @@ void SCMDeformableSoil::ComputeInternalForces() {
         class MyRefinement : public geometry::ChTriangleMeshConnected::ChRefineEdgeCriterion {
         public:
             virtual double ComputeLength(const int vert_a, const int  vert_b, geometry::ChTriangleMeshConnected* mmesh) {
-                ChVector<> d = A.MatrT_x_Vect(mmesh->m_vertices[vert_a] - mmesh->m_vertices[vert_b]);
+                ChVector<> d = A.transpose() * (mmesh->m_vertices[vert_a] - mmesh->m_vertices[vert_b]);
                 d.y() = 0;
                 return d.Length();
             }

@@ -47,7 +47,7 @@ class ChApi ChElasticityCosserat {
         const ChVector<>& strain_k   ///< local strain (curvature part), x= torsion, y and z are line curvatures
         ) = 0;
 
-    /// Compute the 6x6 tangent material stiffness matrix [Km]=d\sigma/d\epsilon,
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;,
     /// given actual deformation and curvature (if needed).
     /// This must be overridden by subclasses if an analytical solution is
     /// known (preferred for high performance), otherwise the base behaviour here is to compute
@@ -147,7 +147,7 @@ class ChApi ChElasticityCosseratSimple : public ChElasticityCosserat {
         const ChVector<>& strain_k   ///< local strain (curvature part), x= torsion, y and z are line curvatures
         ) override;
 
-    /// Compute the 6x6 tangent material stiffness matrix [Km] =d\sigma/d\epsilon
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;
     virtual void ComputeStiffnessMatrix(
         ChMatrixDynamic<>& K,        ///< 6x6 stiffness matrix
         const ChVector<>& strain_e,  ///< local strain (deformation part): x= elongation, y and z are shear
@@ -193,7 +193,7 @@ class ChApi ChElasticityCosseratGeneric : public ChElasticityCosserat {
         const ChVector<>& strain_k   ///< local strain (curvature part), x= torsion, y and z are line curvatures
         ) override;
 
-    /// Compute the 6x6 tangent material stiffness matrix [Km] =d\sigma/d\epsilon
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;
     virtual void ComputeStiffnessMatrix(
         ChMatrixDynamic<>& K,        ///< 6x6 stiffness matrix
         const ChVector<>& strain_e,  ///< local strain (deformation part): x= elongation, y and z are shear
@@ -202,6 +202,9 @@ class ChApi ChElasticityCosseratGeneric : public ChElasticityCosserat {
 
   private:
     ChMatrixNM<double, 6, 6> mE;
+
+  public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 /// Elasticity for a beam section in 3D, along with basic material
@@ -273,7 +276,7 @@ class ChApi ChElasticityCosseratAdvanced : public ChElasticityCosseratSimple {
         const ChVector<>& strain_k   ///< local strain (curvature part), x= torsion, y and z are line curvatures
         ) override;
 
-    /// Compute the 6x6 tangent material stiffness matrix [Km] =d\sigma/d\epsilon
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;
     virtual void ComputeStiffnessMatrix(
         ChMatrixDynamic<>& K,        ///< 6x6 stiffness matrix
         const ChVector<>& strain_e,  ///< local strain (deformation part): x= elongation, y and z are shear
@@ -350,7 +353,7 @@ class ChApi ChElasticityCosseratMesh : public ChElasticityCosserat {
         ) override;
 
     /*
-    /// Compute the 6x6 tangent material stiffness matrix [Km] =d\sigma/d\epsilon
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;
     /// * for the moment, defaults to numerical differentiation *
     virtual void ComputeStiffnessMatrix(
         ChMatrixDynamic<>& K,       ///< 6x6 stiffness matrix
@@ -396,7 +399,7 @@ class ChApi ChPlasticityCosserat {
                                                 ///< {p_strain_e, p_strain_k, p_strain_acc}
         ) = 0;
 
-    /// Compute the 6x6 tangent material stiffness matrix [Km]=d\sigma/d\epsilon,
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;,
     /// given actual internal data and deformation and curvature (if needed). If in
     /// plastic regime, uses elastoplastic matrix, otherwise uses elastic.
     /// This must be overridden by subclasses if an analytical solution is
@@ -487,7 +490,7 @@ class ChApi ChPlasticityCosseratLumped : public ChPlasticityCosserat {
         ) override;
 
     /*
-    /// Compute the 6x6 tangent material stiffness matrix [Km]=d\sigma/d\epsilon,
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;,
     /// given actual internal data and deformation and curvature (if needed). If in
     /// plastic regime, uses elastoplastic matrix, otherwise uses elastic.
     virtual void ComputeStiffnessMatrixElastoplastic(
@@ -649,7 +652,8 @@ class ChApi ChBeamSectionCosserat : public ChBeamSectionProperties {
                                                            ///< including {p_strain_e, p_strain_k, p_strain_acc}
     );
 
-    /// Compute the 6x6 tangent material stiffness matrix [Km] =d\sigma/d\epsilon
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;
+    /// Compute the 6x6 tangent material stiffness matrix [Km] = d&sigma;/d&epsilon;
     /// at a given strain state, and at given internal data state (if mdata=nullptr,
     /// computes only the elastic tangent stiffenss, regardless of plasticity).
     virtual void ComputeStiffnessMatrix(

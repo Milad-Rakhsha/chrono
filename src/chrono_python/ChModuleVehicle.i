@@ -50,17 +50,20 @@
 
 #include "chrono/core/ChQuaternion.h"
 #include "chrono/core/ChVector.h"
+#include "chrono/solver/ChSolver.h"
 
 #include "chrono/physics/ChSystem.h"
 #include "chrono/physics/ChShaft.h"
+#include "chrono/physics/ChShaftsLoads.h"
 #include "chrono/physics/ChBody.h"
 #include "chrono/physics/ChBodyAuxRef.h"
 #include "chrono/physics/ChMarker.h"
 #include "chrono/physics/ChLink.h"
 #include "chrono/physics/ChShaftsCouple.h"
-#include "chrono/physics/ChLinkSpringCB.h"
+#include "chrono/physics/ChLinkTSDA.h"
 #include "chrono/physics/ChLinkRotSpringCB.h"
 #include "chrono/physics/ChLoadsBody.h"
+#include "chrono/physics/ChLoadsXYZnode.h"
 #include "chrono/physics/ChPhysicsItem.h"
 
 #include "chrono_vehicle/ChApiVehicle.h"
@@ -79,6 +82,7 @@
 #include "chrono_vehicle/ChTerrain.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheel.h"
 #include "chrono_vehicle/wheeled_vehicle/wheel/Wheel.h"
+#include "chrono_vehicle/wheeled_vehicle/ChAxle.h"
 
 #include "chrono_vehicle/wheeled_vehicle/ChBrake.h"
 #include "chrono_vehicle/wheeled_vehicle/brake/ChBrakeSimple.h"
@@ -88,7 +92,8 @@
 #include "chrono_models/vehicle/ChVehicleModelDefs.h"
 
 #include "chrono_thirdparty/rapidjson/document.h"
-
+#include "Eigen/src/Core/util/Memory.h"
+#include "chrono_models/vehicle/citybus/CityBus.h"
 
 using namespace chrono;
 using namespace chrono::vehicle;
@@ -96,15 +101,18 @@ using namespace chrono::vehicle;
 using namespace chrono::vehicle::generic;
 using namespace chrono::vehicle::hmmwv;
 using namespace chrono::vehicle::sedan;
-
+using namespace chrono::vehicle::citybus;
+using namespace chrono::vehicle::man;
+using namespace chrono::vehicle::uaz;
 
 %}
 
 
-// Undefine ChApiFea otherwise SWIG gives a syntax error
+// Undefine ChApi otherwise SWIG gives a syntax error
 #define CH_VEHICLE_API 
 #define ChApi
-
+#define EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#define CH_DEPRECATED(msg)
 #define CH_MODELS_API
 
 
@@ -131,6 +139,8 @@ using namespace chrono::vehicle::sedan;
 %template(vector_int) std::vector< int >;
 %template(TerrainForces) std::vector< chrono::vehicle::TerrainForce >;
 %template(WheelStates) std::vector< chrono::vehicle::WheelState >;
+%template(ChWheelList) std::vector<std::shared_ptr<chrono::vehicle::ChWheel> > ;
+%template(ChAxleList) std::vector<std::shared_ptr<chrono::vehicle::ChAxle> > ;
 
 //
 // For each class, keep updated the  A, B, C sections: 
@@ -149,20 +159,11 @@ using namespace chrono::vehicle::sedan;
 %shared_ptr(chrono::ChFunction)
 %shared_ptr(chrono::ChFrame<double>) 
 %shared_ptr(chrono::ChFrameMoving<double>)
-%shared_ptr(chrono::ChObj)
 %shared_ptr(chrono::ChPhysicsItem)
-%shared_ptr(chrono::ChLoadBase)
-%shared_ptr(chrono::ChLoadCustom)
-%shared_ptr(chrono::ChLoadCustomMultiple)
-%shared_ptr(chrono::ChLoadable) 
-%shared_ptr(chrono::ChLoadableU) 
-%shared_ptr(chrono::ChLoadableUV) 
-%shared_ptr(chrono::ChLoadableUVW)
 %shared_ptr(chrono::ChNodeBase) 
 %shared_ptr(chrono::ChNodeXYZ) 
 %shared_ptr(chrono::ChTriangleMeshShape)
 %shared_ptr(chrono::geometry::ChTriangleMeshConnected)
-%shared_ptr(chrono::ChLinkSpring)
 %shared_ptr(chrono::ChFunction_Recorder)
 %shared_ptr(chrono::ChBezierCurve)
 %shared_ptr(chrono::ChLinkMarkers)
@@ -181,6 +182,7 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %shared_ptr(chrono::vehicle::ChBrake)
 %shared_ptr(chrono::vehicle::BrakeSimple)
 %shared_ptr(chrono::vehicle::ChVehicle)
+%shared_ptr(chrono::vehicle::ChAxle)
 %shared_ptr(chrono::vehicle::ChWheeledVehicle)
 %shared_ptr(chrono::vehicle::WheeledVehicle)
 
@@ -223,23 +225,25 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 %import(module = "pychrono.core")  "ChBodyAuxRef.i"
 %import(module = "pychrono.core")  "ChLinkBase.i"
 %import(module = "pychrono.core")  "ChLinkLock.i"
-%import(module = "pychrono.core")  "ChLinkSpringCB.i"
-%import(module = "pychrono.core")  "ChShaft.i"
+%import(module = "pychrono.core")  "ChLinkTSDA.i"
+%import(module = "pychrono.core")  "ChLinkRSDA.i"
+%import(module = "pychrono.core") "ChLoad.i"
+%import(module = "pychrono.core") "ChShaft.i"
 %import(module = "pychrono.core") "ChAsset.i"
 %import(module = "pychrono.core") "ChAssetLevel.i"
 %import(module = "pychrono.core")  "ChVisualization.i"
-/* Parse the header file to generate wrappers */
 %import(module = "pychrono.core") "../chrono/motion_functions/ChFunction_Base.h"
 %import(module = "pychrono.core")  "ChMaterialSurface.i"
-%import(module = "pychrono.core") "../chrono/physics/ChContinuumMaterial.h"
+%import(module = "pychrono.core") "../chrono/fea/ChContinuumMaterial.h"
 %import(module = "pychrono.core") "../chrono/physics/ChPhysicsItem.h"
 //%import(module = "pychrono.core") "../chrono/physics/ChLoadable.h" // disable because strange error in cxx
-%import(module = "pychrono.core") "../chrono/physics/ChLoad.h"
+
 %import(module = "pychrono.core") "../chrono/physics/ChNodeBase.h"
 //%import(module = "pychrono.core") "../chrono/physics/ChNodeXYZ.h"
 %import(module = "pychrono.core") "../chrono/physics/ChBodyFrame.h"
 %import(module = "pychrono.core") "../chrono/physics/ChLinkBase.h"
 %import(module = "pychrono.core") "ChTexture.i"
+%import(module = "pychrono.core") "../chrono/assets/ChTriangleMeshShape.h"
 
 // TODO: 
 //%include "rapidjson.i"
@@ -263,8 +267,6 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 
 
 // Wheeled parts
-%include "../chrono_vehicle/wheeled_vehicle/ChWheeledVehicle.h"
-%include "../chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 %include "ChSuspension.i"
 %include "ChDriveline.i"
 %include "ChSteering.i"
@@ -280,13 +282,14 @@ Before adding a shared_ptr, mark as shared ptr all its inheritance tree in the m
 
 %include "ChTire.i"
 
+%include "../chrono_vehicle/wheeled_vehicle/ChAxle.h"
+
 %include "../chrono_vehicle/wheeled_vehicle/ChWheeledVehicle.h"
 %include "../chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 %include "models/VehicleModels.i"
 
-/*
-Tracked vehicles are not going to be wrapped in the short term
-*/
+// Tracked vehicles are not going to be wrapped in the short term
+
 
 //
 // C- DOWNCASTING OF SHARED POINTERS

@@ -468,9 +468,17 @@ ELSE()
     SET(CHRONO_PARALLEL_LINKED_LIBRARIES ChronoEngine ${TBB_LIBRARIES})
 ENDIF()
 
+# On Visual Studio, disable warning C4146 from Blaze
+# ("unary minus operator applied to unsigned type, result still unsigned")
+if(MSVC)
+    target_compile_options(ChronoEngine_parallel PUBLIC "/wd4146" )
+endif()
+
 SET_TARGET_PROPERTIES(ChronoEngine_parallel PROPERTIES
-                      LINK_FLAGS "${CH_LINKERFLAG_SHARED}"
-                      COMPILE_DEFINITIONS "CH_API_COMPILE_PARALLEL")
+                      LINK_FLAGS "${CH_LINKERFLAG_SHARED}")
+
+target_compile_definitions(ChronoEngine_parallel PRIVATE "CH_API_COMPILE_PARALLEL")
+target_compile_definitions(ChronoEngine_parallel PRIVATE "CH_IGNORE_DEPRECATED")
 
 TARGET_LINK_LIBRARIES(ChronoEngine_parallel ${CHRONO_PARALLEL_LINKED_LIBRARIES})
 

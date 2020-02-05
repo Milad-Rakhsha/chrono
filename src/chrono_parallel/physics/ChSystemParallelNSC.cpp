@@ -21,7 +21,7 @@
 using namespace chrono;
 
 ChSystemParallelNSC::ChSystemParallelNSC() : ChSystemParallel() {
-    solver_speed = std::make_shared<ChIterativeSolverParallelNSC>(data_manager);
+    solver = chrono_types::make_shared<ChIterativeSolverParallelNSC>(data_manager);
 
     // Set this so that the CD can check what type of system it is (needed for narrowphase)
     data_manager->settings.system_type = SystemType::SYSTEM_NSC;
@@ -48,18 +48,18 @@ ChSystemParallelNSC::ChSystemParallelNSC(const ChSystemParallelNSC& other) : ChS
 
 ChBody* ChSystemParallelNSC::NewBody() {
     if (collision_system_type == CollisionSystemType::COLLSYS_PARALLEL)
-        return new ChBody(std::make_shared<collision::ChCollisionModelParallel>(), ChMaterialSurface::NSC);
+        return new ChBody(chrono_types::make_shared<collision::ChCollisionModelParallel>(), ChMaterialSurface::NSC);
 
     return new ChBody(ChMaterialSurface::NSC);
 }
 
 void ChSystemParallelNSC::ChangeSolverType(SolverType type) {
-    std::static_pointer_cast<ChIterativeSolverParallelNSC>(solver_speed)->ChangeSolverType(type);
+    std::static_pointer_cast<ChIterativeSolverParallelNSC>(solver)->ChangeSolverType(type);
 }
 
 ChBodyAuxRef* ChSystemParallelNSC::NewBodyAuxRef() {
     if (collision_system_type == CollisionSystemType::COLLSYS_PARALLEL)
-        return new ChBodyAuxRef(std::make_shared<collision::ChCollisionModelParallel>(), ChMaterialSurface::NSC);
+        return new ChBodyAuxRef(chrono_types::make_shared<collision::ChCollisionModelParallel>(), ChMaterialSurface::NSC);
 
     return new ChBodyAuxRef(ChMaterialSurface::NSC);
 }
@@ -155,7 +155,7 @@ void ChSystemParallelNSC::SolveSystem() {
     collision_system->ReportContacts(this->contact_container.get());
     data_manager->system_timer.stop("collision");
     data_manager->system_timer.start("advance");
-    std::static_pointer_cast<ChIterativeSolverParallelNSC>(solver_speed)->RunTimeStep();
+    std::static_pointer_cast<ChIterativeSolverParallelNSC>(solver)->RunTimeStep();
     data_manager->system_timer.stop("advance");
     data_manager->system_timer.stop("step");
 }

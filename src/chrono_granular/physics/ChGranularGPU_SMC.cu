@@ -17,7 +17,6 @@
 
 #include "chrono_granular/physics/ChGranularGPU_SMC.cuh"
 #include "chrono_granular/utils/ChGranularUtilities.h"
-#include "chrono/core/ChTimer.h"
 
 namespace chrono {
 namespace granular {
@@ -127,10 +126,6 @@ __host__ int3 ChSystemGranularSMC::getSDTripletFromID(unsigned int SD_ID) const 
 /// Occurs entirely on host, not intended to be efficient
 /// ONLY DO AT BEGINNING OF SIMULATION
 __host__ void ChSystemGranularSMC::defragment_initial_positions() {
-    INFO_PRINTF("Starting defrag run!\n");
-    ChTimer<> timer;
-    timer.start();
-
     // key and value pointers
     std::vector<unsigned int, cudallocator<unsigned int>> sphere_ids;
 
@@ -145,12 +140,22 @@ __host__ void ChSystemGranularSMC::defragment_initial_positions() {
     std::vector<int, cudallocator<int>> sphere_pos_x_tmp;
     std::vector<int, cudallocator<int>> sphere_pos_y_tmp;
     std::vector<int, cudallocator<int>> sphere_pos_z_tmp;
+
+    std::vector<float, cudallocator<float>> sphere_vel_x_tmp;
+    std::vector<float, cudallocator<float>> sphere_vel_y_tmp;
+    std::vector<float, cudallocator<float>> sphere_vel_z_tmp;
+
     std::vector<not_stupid_bool, cudallocator<not_stupid_bool>> sphere_fixed_tmp;
     std::vector<unsigned int, cudallocator<unsigned int>> sphere_owner_SDs_tmp;
 
     sphere_pos_x_tmp.resize(nSpheres);
     sphere_pos_y_tmp.resize(nSpheres);
     sphere_pos_z_tmp.resize(nSpheres);
+
+    sphere_vel_x_tmp.resize(nSpheres);
+    sphere_vel_y_tmp.resize(nSpheres);
+    sphere_vel_z_tmp.resize(nSpheres);
+
     sphere_fixed_tmp.resize(nSpheres);
     sphere_owner_SDs_tmp.resize(nSpheres);
 
@@ -159,6 +164,11 @@ __host__ void ChSystemGranularSMC::defragment_initial_positions() {
         sphere_pos_x_tmp.at(i) = sphere_local_pos_X.at(sphere_ids.at(i));
         sphere_pos_y_tmp.at(i) = sphere_local_pos_Y.at(sphere_ids.at(i));
         sphere_pos_z_tmp.at(i) = sphere_local_pos_Z.at(sphere_ids.at(i));
+
+        sphere_vel_x_tmp.at(i) = pos_X_dt.at(sphere_ids.at(i));
+        sphere_vel_y_tmp.at(i) = pos_Y_dt.at(sphere_ids.at(i));
+        sphere_vel_z_tmp.at(i) = pos_Z_dt.at(sphere_ids.at(i));
+
         sphere_fixed_tmp.at(i) = sphere_fixed.at(sphere_ids.at(i));
         sphere_owner_SDs_tmp.at(i) = sphere_owner_SDs.at(sphere_ids.at(i));
     }
@@ -167,11 +177,13 @@ __host__ void ChSystemGranularSMC::defragment_initial_positions() {
     sphere_local_pos_X.swap(sphere_pos_x_tmp);
     sphere_local_pos_Y.swap(sphere_pos_y_tmp);
     sphere_local_pos_Z.swap(sphere_pos_z_tmp);
+
+    pos_X_dt.swap(sphere_vel_x_tmp);
+    pos_Y_dt.swap(sphere_vel_y_tmp);
+    pos_Z_dt.swap(sphere_vel_z_tmp);
+
     sphere_fixed.swap(sphere_fixed_tmp);
     sphere_owner_SDs.swap(sphere_owner_SDs_tmp);
-
-    timer.stop();
-    INFO_PRINTF("finished defrag run in %f seconds!\n", timer.GetTimeSeconds());
 }
 __host__ void ChSystemGranularSMC::setupSphereDataStructures() {
     // Each fills user_sphere_positions with positions to be copied
@@ -193,11 +205,17 @@ __host__ void ChSystemGranularSMC::setupSphereDataStructures() {
 
     TRACK_VECTOR_RESIZE(sphere_fixed, nSpheres, "sphere_fixed", 0);
 
+    TRACK_VECTOR_RESIZE(pos_X_dt, nSpheres, "pos_X_dt", 0);
+    TRACK_VECTOR_RESIZE(pos_Y_dt, nSpheres, "pos_Y_dt", 0);
+    TRACK_VECTOR_RESIZE(pos_Z_dt, nSpheres, "pos_Z_dt", 0);
+
     // temporarily store global positions as 64-bit, discard as soon as local positions are loaded
     {
         bool user_provided_fixed = user_sphere_fixed.size() != 0;
-        if (user_provided_fixed && user_sphere_fixed.size() != nSpheres) {
-            printf("Provided fixity array does not match provided particle positions\n");
+        bool user_provided_vel = user_sphere_vel.size() != 0;
+        if ((user_provided_fixed && user_sphere_fixed.size() != nSpheres) ||
+            (user_provided_vel && user_sphere_vel.size() != nSpheres)) {
+            printf("Provided fixity or velocity array does not match provided particle positions\n");
             exit(1);
         }
 
@@ -211,14 +229,20 @@ __host__ void ChSystemGranularSMC::setupSphereDataStructures() {
 
         // Copy from array of structs to 3 arrays
         for (unsigned int i = 0; i < nSpheres; i++) {
-            auto vec = user_sphere_positions.at(i);
+            float3 vec = user_sphere_positions.at(i);
             // cast to double, convert to SU, then cast to int64_t
-            sphere_global_pos_X.at(i) = (int64_t)((double)vec.x() / LENGTH_SU2UU);
-            sphere_global_pos_Y.at(i) = (int64_t)((double)vec.y() / LENGTH_SU2UU);
-            sphere_global_pos_Z.at(i) = (int64_t)((double)vec.z() / LENGTH_SU2UU);
+            sphere_global_pos_X.at(i) = (int64_t)((double)vec.x / LENGTH_SU2UU);
+            sphere_global_pos_Y.at(i) = (int64_t)((double)vec.y / LENGTH_SU2UU);
+            sphere_global_pos_Z.at(i) = (int64_t)((double)vec.z / LENGTH_SU2UU);
 
             // Convert to not_stupid_bool
             sphere_fixed.at(i) = (not_stupid_bool)((user_provided_fixed) ? user_sphere_fixed[i] : false);
+            if (user_provided_vel) {
+                auto vel = user_sphere_vel.at(i);
+                pos_X_dt.at(i) = vel.x / VEL_SU2UU;
+                pos_Y_dt.at(i) = vel.y / VEL_SU2UU;
+                pos_Z_dt.at(i) = vel.z / VEL_SU2UU;
+            }
         }
 
         packSphereDataPointers();
@@ -233,9 +257,6 @@ __host__ void ChSystemGranularSMC::setupSphereDataStructures() {
         defragment_initial_positions();
     }
 
-    TRACK_VECTOR_RESIZE(pos_X_dt, nSpheres, "pos_X_dt", 0);
-    TRACK_VECTOR_RESIZE(pos_Y_dt, nSpheres, "pos_Y_dt", 0);
-    TRACK_VECTOR_RESIZE(pos_Z_dt, nSpheres, "pos_Z_dt", 0);
     TRACK_VECTOR_RESIZE(sphere_acc_X, nSpheres, "sphere_acc_X", 0);
     TRACK_VECTOR_RESIZE(sphere_acc_Y, nSpheres, "sphere_acc_Y", 0);
     TRACK_VECTOR_RESIZE(sphere_acc_Z, nSpheres, "sphere_acc_Z", 0);
@@ -416,8 +437,8 @@ __host__ double ChSystemGranularSMC::advance_simulation(float duration) {
     float duration_SU = duration / TIME_SU2UU;
     unsigned int nsteps = std::round(duration_SU / stepSize_SU);
 
-    METRICS_PRINTF("advancing by %f at timestep %f, %u timesteps at approx user timestep %f\n", duration_SU, stepSize_SU,
-                nsteps, duration / nsteps);
+    METRICS_PRINTF("advancing by %f at timestep %f, %u timesteps at approx user timestep %f\n", duration_SU,
+                   stepSize_SU, nsteps, duration / nsteps);
     float time_elapsed_SU = 0;  // time elapsed in this advance call
 
     // Run the simulation, there are aggressive synchronizations because we want to have no race conditions

@@ -30,30 +30,22 @@ namespace fea {
 
 /// Simple beam element with two nodes and ANCF gradient-deficient formulation.
 /// For this 'basic' implementation, constant section and constant material are assumed along the beam coordinate.
-/// Torsional stiffness is impossible because of the formulation.
-/// Based on the formulation in:
-///  "Analysis of Thin Beams and Cables Using the Absolute Nodal Co-ordinate Formulation"
-///  J.GERSTMAYR, A.SHABANA
-///  Nonlinear Dynamics (2006) 45: 109-130
-///  DOI: 10.1007/s11071-006-1856-1
-/// and in:
-/// "On the Validation and Applications of a Parallel Flexible Multi-body Dynamics Implementation"
-///  D. MELANZ
+/// Torsional stiffness is impossible because of the formulation. \n
+/// Based on the formulation in \n
+/// "Analysis of Thin Beams and Cables Using the Absolute Nodal Co-ordinate Formulation",
+/// J. Gerstmayr, A. Shabana, Nonlinear Dynamics (2006) 45: 109-130, DOI: 10.1007/s11071-006-1856-1 \n
+/// and \n
+/// "On the Validation and Applications of a Parallel Flexible Multi-body Dynamics Implementation",
+/// D. Melanz
 class ChApi ChElementCableANCF : public ChElementBeam, public ChLoadableU, public ChLoadableUVW {
-  protected:
-    std::vector<std::shared_ptr<ChNodeFEAxyzD> > nodes;
-
-    std::shared_ptr<ChBeamSectionCable> section;
-    ChMatrixNM<double, 12, 1> m_GenForceVec0;
-    ChMatrixNM<double, 12, 12> m_JacobianMatrix;  ///< Jacobian matrix (Kfactor*[K] + Rfactor*[R])
-    ChMatrixNM<double, 12, 12> m_MassMatrix;      ///< mass matrix
-
   public:
+    using ShapeVector = ChMatrixNM<double, 1, 4>;
+
     bool m_use_damping;  ///< Boolean indicating whether internal damping is added
     double m_alpha;      ///< Scaling factor for internal damping
 
     ChElementCableANCF();
-    virtual ~ChElementCableANCF() {}
+    ~ChElementCableANCF() {}
 
     virtual int GetNnodes() override { return 2; }
     virtual int GetNdofs() override { return 2 * 6; }
@@ -86,25 +78,25 @@ class ChApi ChElementCableANCF : public ChElementBeam, public ChLoadableU, publi
     /// Fills the N shape function matrix with the values of shape functions at abscissa 'xi'.
     /// Note, xi=0 at node1, xi=+1 at node2.
     /// N should be a 3x12 parse matrix, N = [s1*eye(3) s2*eye(3) s3*eye(3) s4*eye(3)],
-    /// but is stored here in a compressed form: only the s1 s2 s3 s4 values in a 1x4 column vector.
-    virtual void ShapeFunctions(ChMatrix<>& N, double xi);
+    /// but is stored here in a compressed form: only the s1 s2 s3 s4 values in a 4x1 column vector.
+    virtual void ShapeFunctions(ShapeVector& N, double xi);
 
     /// Fills the N shape function derivative matrix with the values of shape function derivatives at abscissa 'xi'.
     /// Note, xi=0 at node1, xi=+1 at node2.
-    /// In a compressed form, only four values are stored in a 1x4 column vector.
-    virtual void ShapeFunctionsDerivatives(ChMatrix<>& Nd, double xi);
+    /// In a compressed form, only four values are stored in a 4x1 column vector.
+    virtual void ShapeFunctionsDerivatives(ShapeVector& Nd, double xi);
 
     /// Fills the N shape function derivative matrix with the values of shape function 2nd derivatives at abscissa 'xi'.
     /// Note, xi=0 at node1, xi=+1 at node2.
-    /// In a compressed form, only four values are stored in a 1x4 column vector.
-    virtual void ShapeFunctionsDerivatives2(ChMatrix<>& Ndd, double xi);
+    /// In a compressed form, only four values are stored in a 4x1 column vector.
+    virtual void ShapeFunctionsDerivatives2(ShapeVector& Ndd, double xi);
 
     virtual void Update() override;
 
-    /// Fills the D vector (column matrix) with the current field values at the nodes of the element, with proper
-    /// ordering. If the D vector has not the size of this->GetNdofs(), it will be resized.
+    /// Fills the D vector  with the current field values at the nodes of the element, with proper ordering. If the D
+    /// vector has not the size of this->GetNdofs(), it will be resized.
     /// {x_a y_a z_a Dx_a Dx_a Dx_a x_b y_b z_b Dx_b Dy_b Dz_b}
-    virtual void GetStateBlock(ChMatrixDynamic<>& mD) override;
+    virtual void GetStateBlock(ChVectorDynamic<>& mD) override;
 
     /// Computes the stiffness matrix of the element:
     /// K = integral( .... ),
@@ -115,22 +107,19 @@ class ChApi ChElementCableANCF : public ChElementBeam, public ChLoadableU, publi
     /// Note: in this 'basic' implementation, constant section and constant material are assumed.
     virtual void ComputeMassMatrix();
 
-    /// Setup: precompute mass and matrices that do not change during the simulation.
-    virtual void SetupInitial(ChSystem* system) override;
-
     /// Sets M as the global mass matrix.
-    virtual void ComputeMmatrixGlobal(ChMatrix<>& M) override { M = m_MassMatrix; }
+    virtual void ComputeMmatrixGlobal(ChMatrixRef M) override { M = m_MassMatrix; }
 
     /// Sets H as the global stiffness matrix K, scaled  by Kfactor. Optionally, also superimposes global
     /// damping matrix R, scaled by Rfactor, and global mass matrix M multiplied by Mfactor.
-    virtual void ComputeKRMmatricesGlobal(ChMatrix<>& H,
+    virtual void ComputeKRMmatricesGlobal(ChMatrixRef H,
                                           double Kfactor,
                                           double Rfactor = 0,
                                           double Mfactor = 0) override;
 
     /// Computes the internal forces and set values in the Fi vector.
     /// (e.g. the actual position of nodes is not in relaxed reference position).
-    virtual void ComputeInternalForces(ChMatrixDynamic<>& Fi) override;
+    virtual void ComputeInternalForces(ChVectorDynamic<>& Fi) override;
 
     //
     // Beam-specific functions
@@ -235,6 +224,9 @@ class ChApi ChElementCableANCF : public ChElementBeam, public ChLoadableU, publi
     virtual double GetDensity() override { return this->section->Area * this->section->density; }
 
   private:
+    /// Initial setup: precompute mass and matrices that do not change during the simulation.
+    virtual void SetupInitial(ChSystem* system) override;
+
     /// Worker function for computing the internal forces.
     /// This function takes the nodal coordinates as arguments and is therefore thread-safe.
     /// (Typically invoked by ComputeInternalForces. Used explicitly in the FD Jacobian approximation).
@@ -246,7 +238,17 @@ class ChApi ChElementCableANCF : public ChElementBeam, public ChLoadableU, publi
                                     const ChVector<>& dA_dt,
                                     const ChVector<>& pB_dt,
                                     const ChVector<>& dB_dt,
-                                    ChMatrixDynamic<>& Fi);
+                                    ChVectorDynamic<>& Fi);
+
+    std::vector<std::shared_ptr<ChNodeFEAxyzD> > nodes;
+
+    std::shared_ptr<ChBeamSectionCable> section;
+    ChVectorN<double, 12> m_GenForceVec0;
+    ChMatrixNM<double, 12, 12> m_JacobianMatrix;  ///< Jacobian matrix (Kfactor*[K] + Rfactor*[R])
+    ChMatrixNM<double, 12, 12> m_MassMatrix;      ///< mass matrix
+
+  public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 /// @} fea_elements

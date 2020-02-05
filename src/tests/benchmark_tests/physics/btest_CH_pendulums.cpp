@@ -17,6 +17,8 @@
 // =============================================================================
 
 #include "chrono/ChConfig.h"
+#include "chrono/solver/ChSolverPSOR.h"
+#include "chrono/solver/ChSolverBB.h"
 #include "chrono/utils/ChBenchmark.h"
 
 #include "chrono/assets/ChColorAsset.h"
@@ -62,28 +64,30 @@ ChainTest<N>::ChainTest() : m_length(0.25), m_step(1e-3) {
 
     // Set solver parameters
     switch (solver_type) {
-        case ChSolver::Type::SOR: {
-            m_system->SetSolverType(ChSolver::Type::SOR);
-            m_system->SetMaxItersSolverSpeed(50);
-            m_system->SetMaxItersSolverStab(50);
-            m_system->SetTol(0);
+        case ChSolver::Type::PSOR: {
+            auto solver = chrono_types::make_shared<ChSolverPSOR>();
+            solver->SetMaxIterations(50);
+            solver->SetOmega(0.8);
+            solver->SetSharpnessLambda(1.0);
+            m_system->SetSolver(solver);
+
             m_system->SetMaxPenetrationRecoverySpeed(1.5);
             m_system->SetMinBounceSpeed(2.0);
-            m_system->SetSolverOverrelaxationParam(0.8);
-            m_system->SetSolverSharpnessParam(1.0);
+
             break;
         }
         case ChSolver::Type::BARZILAIBORWEIN: {
-            m_system->SetSolverType(ChSolver::Type::BARZILAIBORWEIN);
-            m_system->SetMaxItersSolverSpeed(50);
-            m_system->SetMaxItersSolverStab(50);
-            m_system->SetTol(0);
+            auto solver = chrono_types::make_shared<ChSolverBB>();
+            solver->SetMaxIterations(50);
+            m_system->SetSolver(solver);
+
             m_system->SetMaxPenetrationRecoverySpeed(1.5);
             m_system->SetMinBounceSpeed(2.0);
-            m_system->SetSolverOverrelaxationParam(0.8);
-            m_system->SetSolverSharpnessParam(1.0);
+
             break;
         }
+        default:
+            break;
     }
 
     // Set integrator parameters
@@ -101,10 +105,12 @@ ChainTest<N>::ChainTest() : m_length(0.25), m_step(1e-3) {
             integrator->SetVerbose(false);
             break;
         }
+        default:
+            break;
     }
 
     // Create ground
-    auto ground = std::make_shared<ChBody>(contact_method);
+    auto ground = chrono_types::make_shared<ChBody>(contact_method);
     ground->SetBodyFixed(true);
     m_system->AddBody(ground);
 
@@ -114,12 +120,12 @@ ChainTest<N>::ChainTest() : m_length(0.25), m_step(1e-3) {
     for (int ib = 0; ib < N; ib++) {
         auto prev = m_system->Get_bodylist().back();
 
-        auto pend = std::make_shared<ChBodyEasyBox>(m_length, width, width, density, false, true, contact_method);
+        auto pend = chrono_types::make_shared<ChBodyEasyBox>(m_length, width, width, density, false, true, contact_method);
         pend->SetPos(ChVector<>((ib + 0.5) * m_length, 0, 0));
-        pend->AddAsset(std::make_shared<ChColorAsset>(0.5f * (ib % 2), 0.0f, 0.5f * (ib % 2 - 1)));
+        pend->AddAsset(chrono_types::make_shared<ChColorAsset>(0.5f * (ib % 2), 0.0f, 0.5f * (ib % 2 - 1)));
         m_system->AddBody(pend);
 
-        auto rev = std::make_shared<ChLinkLockRevolute>();
+        auto rev = chrono_types::make_shared<ChLinkLockRevolute>();
         rev->Initialize(pend, prev, ChCoordsys<>(ChVector<>(ib * m_length, 0, 0)));
         m_system->AddLink(rev);
     }

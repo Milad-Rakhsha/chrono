@@ -23,23 +23,32 @@
 
 #include "chrono/physics/ChSystem.h"
 #include "chrono_vehicle/wheeled_vehicle/ChTire.h"
+#include "chrono_thirdparty/filesystem/path.h"
 
 namespace chrono {
 namespace vehicle {
 
 ChTire::ChTire(const std::string& name)
-    : ChPart(name), m_stepsize(1e-3), m_slip_angle(0), m_longitudinal_slip(0), m_camber_angle(0) {}
+    : ChPart(name),
+      m_collision_type(CollisionType::SINGLE_POINT),
+      m_stepsize(1e-3),
+      m_slip_angle(0),
+      m_longitudinal_slip(0),
+      m_camber_angle(0) {}
 
 // -----------------------------------------------------------------------------
-// Base class implementation of the initialization function.
+// Initialize this tire by associating it to the specified wheel.
+// Increment the mass and inertia of the associated suspension spindle body to
+// account for the tire mass and inertia.
 // -----------------------------------------------------------------------------
-void ChTire::Initialize(std::shared_ptr<ChBody> wheel, VehicleSide side) {
+void ChTire::Initialize(std::shared_ptr<ChWheel> wheel) {
     m_wheel = wheel;
-    m_side = side;
 
-    // Increment mass and inertia of the wheel body.
-    wheel->SetMass(wheel->GetMass() + GetMass());
-    wheel->SetInertiaXX(wheel->GetInertiaXX() + GetInertia());
+    //// RADU
+    //// Todo:  Properly account for offset in adjusting inertia.
+    ////        This requires changing the spindle to a ChBodyAuxRef.
+    wheel->GetSpindle()->SetMass(wheel->GetSpindle()->GetMass() + GetMass());
+    wheel->GetSpindle()->SetInertiaXX(wheel->GetSpindle()->GetInertiaXX() + GetInertia());
 }
 
 // -----------------------------------------------------------------------------
@@ -53,7 +62,7 @@ double ChTire::ReportMass() const {
 
 // -----------------------------------------------------------------------------
 // Calculate kinematics quantities (slip angle, longitudinal slip, camber angle,
-// and toe-in angle using the current state of the associated wheel body.
+// and toe-in angle) using the given state of the associated wheel.
 // -----------------------------------------------------------------------------
 void ChTire::CalculateKinematics(double time, const WheelState& state, const ChTerrain& terrain) {
     // Wheel normal (expressed in global frame)
@@ -87,6 +96,42 @@ void ChTire::CalculateKinematics(double time, const WheelState& state, const ChT
 
     // Camber angle (positive sign = upper side tipping to the left, negative sign = upper side tipping to the right)
     m_camber_angle = std::atan2(n.z(), n.y());
+}
+
+// -----------------------------------------------------------------------------
+// Utility functions for adding/removing a mesh visualization asset to this tire
+// -----------------------------------------------------------------------------
+
+// Add visualization mesh: use one of the two provided OBJ files, depending on the side on which the tire is mounted.
+std::shared_ptr<ChTriangleMeshShape> ChTire::AddVisualizationMesh(const std::string& mesh_file_left,
+                                                                  const std::string& mesh_file_right) {
+    bool left = (m_wheel->GetSide() == VehicleSide::LEFT);
+    ChQuaternion<> rot = left ? Q_from_AngZ(0) : Q_from_AngZ(CH_C_PI);
+    auto meshFile = left ? mesh_file_left : mesh_file_right;
+
+    auto trimesh = chrono_types::make_shared<geometry::ChTriangleMeshConnected>();
+    trimesh->LoadWavefrontMesh(meshFile, false, false);
+    trimesh->Transform(ChVector<>(0, GetOffset(), 0), ChMatrix33<>(rot));
+
+    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    trimesh_shape->Pos = ChVector<>(0, GetOffset(), 0);
+    trimesh_shape->Rot = ChMatrix33<>(rot);
+    trimesh_shape->SetMesh(trimesh);
+    trimesh_shape->SetName(filesystem::path(meshFile).stem());
+    trimesh_shape->SetStatic(true);
+
+    m_wheel->GetSpindle()->AddAsset(trimesh_shape);
+
+    return trimesh_shape;
+}
+
+// Remove visualization mesh shape. Make sure to only remove the specified asset.  A associated body (a wheel spindle)
+// may have additional assets.
+void ChTire::RemoveVisualizationMesh(std::shared_ptr<ChTriangleMeshShape> trimesh_shape) {
+    auto& assets = m_wheel->GetSpindle()->GetAssets();
+    auto it = std::find(assets.begin(), assets.end(), trimesh_shape);
+    if (it != assets.end())
+        assets.erase(it);
 }
 
 // -----------------------------------------------------------------------------
@@ -238,7 +283,7 @@ bool ChTire::DiscTerrainCollision4pt(
 }
 
 void ChTire::ConstructAreaDepthTable(double disc_radius, ChFunction_Recorder& areaDep) {
-    const size_t n_lookup = 30;
+    const size_t n_lookup = 90;
     double depMax = disc_radius;  // should be high enough to avoid extrapolation
     double depStep = depMax / double(n_lookup - 1);
     for (size_t i = 0; i < n_lookup; i++) {
@@ -266,14 +311,14 @@ bool ChTire::DiscTerrainCollisionEnvelope(
     ChVector<> normal = terrain.GetNormal(disc_center.x(), disc_center.y());
     ChVector<> longitudinal = Vcross(disc_normal, normal);
     longitudinal.Normalize();
-    const size_t n_con_pts = 31;
+    const size_t n_con_pts = 181;
     double x_step = 2.0 * disc_radius / double(n_con_pts - 1);
     // ChVectorDynamic<> q(n_con_pts);  // road surface height values along 'longitudinal'
     // ChVectorDynamic<> x(n_con_pts);  // x values along disc_center + x*longitudinal
     double A = 0;   // overlapping area of tire disc and road surface contour
     double Xc = 0;  // relative x coordinate of area A centroid
     double Zc = 0;  // relative z (rsp. to road height) height of area A centroid, actually unused
-    for (size_t i = 0; i < n_con_pts; i++) {
+    for (size_t i = 1; i < n_con_pts - 1; i++) {
         double x = -disc_radius + x_step * double(i);
         ChVector<> pTest = disc_center + x * longitudinal;
         double q = terrain.GetHeight(pTest.x(), pTest.y());
@@ -283,25 +328,20 @@ bool ChTire::DiscTerrainCollisionEnvelope(
         if (Q1 < 0) {
             Q1 = 0;
         }
-        if (i == 0 || i == (n_con_pts - 1)) {
+        if (i == 1 || i == (n_con_pts - 2)) {
             A += 0.5 * Q1;
-            Xc += 0.5 * Q1 * x;
-            // Zc += 0.5 * Q1 * Q2 / 2.0;
         } else {
             A += Q1;
-            Xc += Q1 * x;
-            // Zc += Q1 * Q2 / 2.0;
         }
     }
     A *= x_step;
-    Xc *= x_step / A;
     // Zc *= x_step / A;
     if (A == 0) {
         return false;
     }
-
+    
     // Xc = negative means area centroid is in front of the disc_center
-    ChVector<> pXc = disc_center - Xc * longitudinal;
+    ChVector<> pXc = disc_center;
 
     // Zc relative to q(x)
     // Zc = terrain.GetHeight(disc_center.x(), disc_center.y()) + Zc;
@@ -366,7 +406,7 @@ ChVector<> ChTire::EstimateInertia(double tire_width,    // tire width [mm]
                                    double rim_diameter,  // rim diameter [in]
                                    double tire_mass,     // mass of the tire [kg]
                                    double t_factor       // tread to sidewall thickness factor
-                                   ) {
+) {
     double rho = 1050.0;  // rubber density in kg/m^3
 
     double width = tire_width / 1000;             // tire width in meters

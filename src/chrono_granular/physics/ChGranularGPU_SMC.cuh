@@ -27,7 +27,6 @@
 #include <sstream>
 #include <string>
 #include <cstdint>
-#include "chrono/core/ChVector.h"
 #include "chrono_granular/ChGranularDefines.h"
 #include "chrono_granular/physics/ChGranular.h"
 #include "chrono_granular/utils/ChCudaMathUtils.cuh"
@@ -147,10 +146,10 @@ inline __device__ void figureOutTouchedSD(int64_t sphCenter_X_relative,
  * box. Usually, there is no sphere in this SD (THIS IS NOT IMPLEMENTED AS SUCH FOR NOW)
  *
  */
-template <unsigned int CUB_THREADS>  //!< Number of CUB threads engaged in block-collective CUB operations. Should be a
-                                     //!< multiple of 32
+template <unsigned int CUB_THREADS>  // Number of CUB threads engaged in block-collective CUB operations. Should be a
+                                     // multiple of 32
 __global__ void sphereBroadphase_dryrun(GranSphereDataPtr sphere_data,
-                                        unsigned int nSpheres,  //!< Number of spheres in the box
+                                        unsigned int nSpheres,  // Number of spheres in the box
                                         GranParamsPtr gran_params) {
     /// Set aside shared memory
     volatile __shared__ bool shMem_head_flags[CUB_THREADS * MAX_SDs_TOUCHED_BY_SPHERE];
@@ -226,10 +225,10 @@ __global__ void sphereBroadphase_dryrun(GranSphereDataPtr sphere_data,
     }
 }
 
-template <unsigned int CUB_THREADS>  //!< Number of CUB threads engaged in block-collective CUB operations. Should be a
-                                     //!< multiple of 32
+template <unsigned int CUB_THREADS>  // Number of CUB threads engaged in block-collective CUB operations. Should be a
+                                     // multiple of 32
 __global__ void sphereBroadphase(GranSphereDataPtr sphere_data,
-                                 unsigned int nSpheres,  //!< Number of spheres in the box
+                                 unsigned int nSpheres,  // Number of spheres in the box
                                  GranParamsPtr gran_params) {
     /// Set aside shared memory
     // SD component of offset into composite array
@@ -462,8 +461,8 @@ inline __device__ void applyGravity(float3& sphere_force, GranParamsPtr gran_par
 
 /// Compute forces on a sphere from walls, BCs, and gravity
 inline __device__ void applyExternalForces_frictionless(unsigned int ownerSD,
-                                                        const int3& sphPos_local,  //!< local X position of DE
-                                                        const float3& sphVel,      //!< Global X velocity of DE
+                                                        const int3& sphPos_local,  // local X position of DE
+                                                        const float3& sphVel,      // Global X velocity of DE
                                                         float3& sphere_force,
                                                         GranParamsPtr gran_params,
                                                         GranSphereDataPtr sphere_data,
@@ -509,8 +508,8 @@ inline __device__ void applyExternalForces_frictionless(unsigned int ownerSD,
 /// Compute forces on a sphere from walls, BCs, and gravity
 inline __device__ void applyExternalForces(unsigned int currSphereID,
                                            unsigned int ownerSD,
-                                           const int3& sphPos_local,  //!< Global X position of DE
-                                           const float3& sphVel,      //!< Global X velocity of DE
+                                           const int3& sphPos_local,  // Global X position of DE
+                                           const float3& sphVel,      // Global X velocity of DE
                                            const float3& sphOmega,
                                            float3& sphere_force,
                                            float3& sphere_ang_acc,
@@ -774,9 +773,9 @@ static __global__ void computeSphereContactForces(GranSphereDataPtr sphere_data,
                     vrel_t = vrel_t + Cross((my_omega + their_omega), -1.f * delta_r * sphereRadius_SU);
 
                     // compute alpha due to rolling resistance
-                    float3 rolling_resist_ang_acc =
-                        computeRollingAngAcc(sphere_data, gran_params, gran_params->rolling_coeff_s2s_SU, force_accum,
-                                             my_omega, their_omega, delta_r * sphereRadius_SU);
+                    float3 rolling_resist_ang_acc = computeRollingAngAcc(
+                        sphere_data, gran_params, gran_params->rolling_coeff_s2s_SU, gran_params->spinning_coeff_s2s_SU,
+                        force_accum, my_omega, their_omega, delta_r * sphereRadius_SU);
                     bodyA_AngAcc = bodyA_AngAcc + rolling_resist_ang_acc;
 
                     constexpr float m_eff = gran_params->sphere_mass_SU / 2.f;
@@ -831,6 +830,7 @@ static __global__ void computeSphereForces_frictionless(GranSphereDataPtr sphere
     // store positions relative to *THIS* SD
     __shared__ int3 sphere_pos[MAX_COUNT_OF_SPHERES_PER_SD];
     __shared__ float3 sphere_vel[MAX_COUNT_OF_SPHERES_PER_SD];
+    __shared__ not_stupid_bool sphere_fixed[MAX_COUNT_OF_SPHERES_PER_SD];
 
     unsigned int thisSD = blockIdx.x;
     unsigned int spheresTouchingThisSD = sphere_data->SD_NumSpheresTouching[thisSD];
@@ -870,6 +870,7 @@ static __global__ void computeSphereForces_frictionless(GranSphereDataPtr sphere
 
         sphere_vel[bodyA] = make_float3(sphere_data->pos_X_dt[mySphereID], sphere_data->pos_Y_dt[mySphereID],
                                         sphere_data->pos_Z_dt[mySphereID]);
+        sphere_fixed[bodyA] = sphere_data->sphere_fixed[mySphereID];
     }
 
     __syncthreads();  // Needed to make sure data gets in shmem before using it elsewhere
@@ -877,8 +878,9 @@ static __global__ void computeSphereForces_frictionless(GranSphereDataPtr sphere
     // Each body looks at each other body and computes the force that the other body exerts on it
     if (bodyA < spheresTouchingThisSD) {
         for (unsigned char bodyB = 0; bodyB < spheresTouchingThisSD; bodyB++) {
-            if (bodyA == bodyB)
+            if (bodyA == bodyB || (sphere_fixed[bodyA] && sphere_fixed[bodyB])) {
                 continue;
+            }
 
             bool active_contact = checkSpheresContacting_int(sphere_pos[bodyA], sphere_pos[bodyB], thisSD, gran_params);
 

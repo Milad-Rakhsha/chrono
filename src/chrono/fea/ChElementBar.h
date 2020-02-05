@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Alessandro Tasora
+// Authors: Alessandro Tasora, Radu Serban
 // =============================================================================
 
 #ifndef CHELEMENTBAR_H
@@ -30,18 +30,9 @@ namespace fea {
 /// but also adds mass along the element, hence point-like mass in the two nodes
 /// is not needed.
 class ChApi ChElementBar : public ChElementGeneric {
-  protected:
-    std::vector<std::shared_ptr<ChNodeFEAxyz> > nodes;
-    double area;
-    double density;
-    double E;
-    double rdamping;
-    double mass;
-    double length;
-
   public:
     ChElementBar();
-    virtual ~ChElementBar();
+    ~ChElementBar();
 
     virtual int GetNnodes() override { return 2; }
     virtual int GetNdofs() override { return 2 * 3; }
@@ -55,27 +46,21 @@ class ChApi ChElementBar : public ChElementGeneric {
     // FEM functions
     //
 
-    /// Fills the D vector (column matrix) with the current
-    /// field values at the nodes of the element, with proper ordering.
-    /// If the D vector has not the size of this->GetNdofs(), it will be resized.
-    virtual void GetStateBlock(ChMatrixDynamic<>& mD) override;
+    /// Fills the D vector with the current field values at the nodes of the element, with proper ordering.
+    /// If the D vector size is not this->GetNdofs(), it will be resized.
+    virtual void GetStateBlock(ChVectorDynamic<>& mD) override;
 
     /// Sets H as the global stiffness matrix K, scaled  by Kfactor. Optionally, also
     /// superimposes global damping matrix R, scaled by Rfactor, and global mass matrix M multiplied by Mfactor.
     /// (For the spring matrix there is no need to corotate local matrices: we already know a closed form expression.)
-    virtual void ComputeKRMmatricesGlobal(ChMatrix<>& H,
+    virtual void ComputeKRMmatricesGlobal(ChMatrixRef H,
                                           double Kfactor,
                                           double Rfactor = 0,
                                           double Mfactor = 0) override;
 
-    /// Setup. Precompute mass and matrices that do not change during the
-    /// simulation, such as the local tangent stiffness Kl of each element, if needed, etc.
-    virtual void SetupInitial(ChSystem* system) override;
-
-    /// Computes the internal forces (ex. the actual position of
-    /// nodes is not in relaxed reference position) and set values
-    /// in the Fi vector.
-    virtual void ComputeInternalForces(ChMatrixDynamic<>& Fi) override;
+    /// Computes the internal forces (ex. the actual position of nodes is not in relaxed reference position) and set
+    /// values in the Fi vector.
+    virtual void ComputeInternalForces(ChVectorDynamic<>& Fi) override;
 
     //
     // Custom properties functions
@@ -106,15 +91,32 @@ class ChApi ChElementBar : public ChElementGeneric {
     /// The current length of the bar (might be after deformation)
     double GetCurrentLength() { return (nodes[1]->GetPos() - nodes[0]->GetPos()).Length(); }
 
-    /// Get the strain epsilon, after deformation.
+    /// Get the strain (epsilon), after deformation.
     double GetStrain() { return (GetCurrentLength() - GetRestLength()) / GetRestLength(); }
 
-    /// Get the stress sigma, after deformation.
+    /// Get the elastic stress (sigma), after deformation.
     double GetStress() { return GetBarYoungModulus() * GetStrain(); }
+
+	/// Get the current force transmitted along the bar direction, 
+	/// including the effect of the damper. Positive if pulled. (N)
+	virtual double GetCurrentForce();
 
     //
     // Functions for interfacing to the solver
     //            (***not needed, thank to bookkeeping in parent class ChElementGeneric)
+
+  private:
+    /// Initial setup. Precompute mass and matrices that do not change during the simulation, such as the local tangent
+    /// stiffness Kl of each element, if needed, etc.
+    virtual void SetupInitial(ChSystem* system) override;
+
+    std::vector<std::shared_ptr<ChNodeFEAxyz> > nodes;
+    double area;
+    double density;
+    double E;
+    double rdamping;
+    double mass;
+    double length;
 };
 
 /// @} fea_elements

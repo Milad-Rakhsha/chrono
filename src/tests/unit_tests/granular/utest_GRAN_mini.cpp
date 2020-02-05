@@ -20,6 +20,7 @@
 #include <string>
 #include "chrono_thirdparty/filesystem/path.h"
 #include "chrono/core/ChTimer.h"
+#include "chrono_granular/api/ChApiGranularChrono.h"
 #include "chrono_granular/physics/ChGranular.h"
 #include "chrono_thirdparty/SimpleOpt/SimpleOpt.h"
 #include "chrono/utils/ChUtilsSamplers.h"
@@ -37,10 +38,10 @@ float grav_acceleration = -980.f;
 float normStiffness_S2S = 5e7f;
 float normStiffness_S2W = 5e7f;
 
-float normalDampS2S = 10000;
-float normalDampS2W = 10000;
+float normalDampS2S = 20000;
+float normalDampS2W = 20000;
 float adhesion_ratio_s2w = 0.f;
-float timestep = 1e-4;
+float timestep = 5e-5;
 
 GRAN_OUTPUT_MODE write_mode = GRAN_OUTPUT_MODE::NONE;
 GRAN_VERBOSITY verbose = GRAN_VERBOSITY::INFO;
@@ -64,7 +65,10 @@ double run_test(float box_size_X, float box_size_Y, float box_size_Z) {
     ChVector<float> center(0, 0, -.25 * box_size_Z);
     ChVector<float> hdims(box_size_X / 2 - sphereRadius, box_size_X / 2 - sphereRadius, box_size_Z / 4 - sphereRadius);
     std::vector<ChVector<float>> body_points = sampler.SampleBox(center, hdims);
-    gran_system.setParticlePositions(body_points);
+
+    ChGranularSMC_API apiSMC;
+    apiSMC.setGranSystem(&gran_system);
+    apiSMC.setElemsPositions(body_points);
 
     gran_system.set_BD_Fixed(true);
     gran_system.set_friction_mode(GRAN_FRICTION_MODE::FRICTIONLESS);
@@ -152,7 +156,7 @@ int main(int argc, char* argv[]) {
     // up to one million bodies
     // double time50k = run_test(100, 100, 100);
     // double time500k = run_test(220, 220, 220);
-    double run_time = run_test(80, 80, 75);
+    double run_time = run_test(70, 70, 70);
 
     std::cout << "Running mini granular test!" << std::endl;
     // std::cout << "50 thousand bodies took " << time50k << " seconds!" << std::endl;

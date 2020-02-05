@@ -30,6 +30,7 @@ namespace vehicle {
 /// @addtogroup vehicle_powertrain
 /// @{
 
+/// Shafts-based powertrain subsystem (specified through JSON file).
 class CH_VEHICLE_API ShaftsPowertrain : public ChShaftsPowertrain {
   public:
     ShaftsPowertrain(const std::string& filename);
@@ -41,6 +42,9 @@ class CH_VEHICLE_API ShaftsPowertrain : public ChShaftsPowertrain {
     virtual double GetMotorBlockInertia() const override { return m_motorblock_inertia; }
     virtual double GetCrankshaftInertia() const override { return m_crankshaft_inertia; }
     virtual double GetIngearShaftInertia() const override { return m_ingear_shaft_inertia; }
+
+    virtual double GetUpshiftRPM() const override { return m_upshift_RPM; }
+    virtual double GetDownshiftRPM() const override { return m_downshift_RPM; }
 
     virtual void SetEngineTorqueMap(std::shared_ptr<ChFunction_Recorder>& map) override { SetMapData(m_engine_torque, map); }
     virtual void SetEngineLossesMap(std::shared_ptr<ChFunction_Recorder>& map) override { SetMapData(m_engine_losses, map); }
@@ -69,6 +73,9 @@ class CH_VEHICLE_API ShaftsPowertrain : public ChShaftsPowertrain {
 
     double m_rev_gear;
     std::vector<double> m_fwd_gear;
+
+    double m_upshift_RPM;
+    double m_downshift_RPM;
 
     MapData m_engine_torque;
     MapData m_engine_losses;

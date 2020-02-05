@@ -19,13 +19,13 @@
 #include "chrono/physics/ChLinkMotorRotationAngle.h"
 #include "chrono/physics/ChLoadContainer.h"
 #include "chrono/physics/ChSystemSMC.h"
-#include "chrono/solver/ChSolverMINRES.h"
 
 #include "chrono_irrlicht/ChIrrApp.h"
 #include "chrono_mkl/ChSolverMKL.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/wheeled_vehicle/wheel/Wheel.h"
 #include "chrono_vehicle/wheeled_vehicle/tire/ReissnerTire.h"
 
 using namespace chrono;
@@ -68,31 +68,34 @@ int main(int argc, char* argv[]) {
     // CREATE A DEFORMABLE TIRE
     //
  
-    // the rim: 
-
-    std::shared_ptr<ChBody> mrim (new ChBody);
+    // The rim body: 
+    auto mrim = chrono_types::make_shared<ChBody>();
     my_system.Add(mrim);
-    mrim->SetMass(100);
-    mrim->SetInertiaXX(ChVector<>(2,2,2));
+    mrim->SetMass(80);
+    mrim->SetInertiaXX(ChVector<>(1,1,1));
     mrim->SetPos(tire_center + ChVector<>(0,0.2,0));
     mrim->SetRot(Q_from_AngAxis(CH_C_PI_2, VECT_Z));
 
-    // the tire:
+    // The wheel object:
+    auto wheel = chrono_types::make_shared<Wheel>(vehicle::GetDataFile("hmmwv/wheel/HMMWV_Wheel_FrontLeft.json"));
+    wheel->Initialize(mrim, LEFT);
 
-    std::shared_ptr<ChReissnerTire> tire_reissner;
-    tire_reissner = std::make_shared<ReissnerTire>(vehicle::GetDataFile("hmmwv/tire/HMMWV_ReissnerTire.json"));
+    // The tire:
+    auto tire_reissner = chrono_types::make_shared<ReissnerTire>(vehicle::GetDataFile("hmmwv/tire/HMMWV_ReissnerTire.json"));
     tire_reissner->EnablePressure(false);
     tire_reissner->EnableContact(true);
     tire_reissner->SetContactSurfaceType(ChDeformableTire::TRIANGLE_MESH);
     tire_reissner->EnableRimConnection(true);
-    tire_reissner->Initialize(mrim, LEFT);
+    std::static_pointer_cast<ChTire>(tire_reissner)->Initialize(wheel);
     tire_reissner->SetVisualizationType(VisualizationType::MESH);
 
-    // the motor that rotates the rim:
+    // Attach tire to wheel
+    wheel->GetTire() = tire_reissner;
 
-    auto motor = std::make_shared<ChLinkMotorRotationAngle>();
+    // The motor that rotates the rim:
+    auto motor = chrono_types::make_shared<ChLinkMotorRotationAngle>();
     motor->SetSpindleConstraint(ChLinkMotorRotation::SpindleConstraint::OLDHAM);
-    motor->SetAngleFunction(std::make_shared<ChFunction_Ramp>(0, CH_C_PI / 4.0));
+    motor->SetAngleFunction(chrono_types::make_shared<ChFunction_Ramp>(0, CH_C_PI / 4.0));
     motor->Initialize(mrim, mtruss, ChFrame<>(tire_center, Q_from_AngAxis(CH_C_PI_2, VECT_Y)));
     my_system.Add(motor);
 
@@ -155,9 +158,6 @@ int main(int argc, char* argv[]) {
     // Use shadows in realtime view
     application.AddShadowAll();
 
-    // ==IMPORTANT!== Mark completion of system construction
-    my_system.SetupInitial();
-
 
     //
     // THE SOFT-REAL-TIME CYCLE
@@ -165,8 +165,8 @@ int main(int argc, char* argv[]) {
 
     // change the solver to MKL: 
     GetLog() << "Using MKL solver\n";
-    auto mkl_solver = std::make_shared<ChSolverMKL<>>();
-    mkl_solver->SetSparsityPatternLock(true);
+    auto mkl_solver = chrono_types::make_shared<ChSolverMKL>();
+    mkl_solver->LockSparsityPattern(true);
     my_system.SetSolver(mkl_solver);
     
     

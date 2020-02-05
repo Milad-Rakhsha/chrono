@@ -15,28 +15,6 @@
 #include "chrono/physics/ChShaft.h"
 #include "chrono_vehicle/ChPart.h"
 #include "chrono_vehicle/wheeled_vehicle/ChSuspension.h"
-/*#include "chrono_vehicle/wheeled_vehicle/suspension/ChDoubleWishbone.h"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChMacPhersonStrut.h"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChLeafspringAxle.h"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChHendricksonPRIMAXX.h"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChDoubleWishboneReduced.h"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChMultiLink""
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChRigidPinnedAxle""
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChSemiTrailingArm""
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChRigidSuspension""
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChSolidAxle""
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChThreeLinkIRS""
-#include "chrono_vehicle/wheeled_vehicle/suspension/ChToeBarLeafspringAxle""
-#include "chrono_vehicle/wheeled_vehicle/suspension/DoubleWishbone""
-#include "chrono_vehicle/wheeled_vehicle/suspension/DoubleWishboneReduced""
-#include "chrono_vehicle/wheeled_vehicle/suspension/HendricksonPRIMAXX""
-#include "chrono_vehicle/wheeled_vehicle/suspension/LeafspringAxle"
-#include "chrono_vehicle/wheeled_vehicle/suspension/MacPhersonStrut"
-#include "chrono_vehicle/wheeled_vehicle/suspension/MultiLink"
-#include "chrono_vehicle/wheeled_vehicle/suspension/SemiTrailingArm"
-#include "chrono_vehicle/wheeled_vehicle/suspension/SolidAxle"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ThreeLinkIRS"
-#include "chrono_vehicle/wheeled_vehicle/suspension/ToeBarLeafspringAxle"*/
 
 #include "chrono_models/vehicle/generic/Generic_RigidSuspension.h"
 #include "chrono_models/vehicle/generic/Generic_RigidPinnedAxle.h"
@@ -49,6 +27,17 @@
 #include "chrono_models/vehicle/sedan/Sedan_DoubleWishbone.h"
 #include "chrono_models/vehicle/sedan/Sedan_MultiLink.h"
 
+#include "chrono_models/vehicle/citybus/CityBus_ToeBarLeafspringAxle.h"
+#include "chrono_models/vehicle/citybus/CityBus_SolidAxle.h"
+#include "chrono_models/vehicle/citybus/CityBus_LeafspringAxle.h"
+
+#include "chrono_models/vehicle/man/MAN_5t_BellcrankSolid3LinkAxle.h"
+#include "chrono_models/vehicle/man/MAN_5t_Solid3LinkAxle.h"
+#include "chrono_models/vehicle/man/MAN_10t_Front1Axle.h"
+#include "chrono_models/vehicle/man/MAN_10t_Front2Axle.h"
+
+#include "chrono_models/vehicle/uaz/UAZBUS_ToeBarLeafspringAxle.h"
+#include "chrono_models/vehicle/uaz/UAZBUS_LeafspringAxle.h"
 %}
 
 
@@ -69,6 +58,19 @@
 %shared_ptr(chrono::vehicle::sedan::Sedan_DoubleWishbone)
 %shared_ptr(chrono::vehicle::sedan::Sedan_MultiLink)
 
+%shared_ptr(chrono::vehicle::citybus::CityBus_ToeBarLeafspringAxle)
+%shared_ptr(chrono::vehicle::citybus::CityBus_SolidAxleFront)
+%shared_ptr(chrono::vehicle::citybus::CityBus_SolidAxleRear)
+%shared_ptr(chrono::vehicle::citybus::CityBus_LeafspringAxle)
+
+%shared_ptr(chrono::vehicle::man::MAN_5t_BellcrankSolid3LinkAxle)
+%shared_ptr(chrono::vehicle::man::MAN_5t_Solid3LinkAxle)
+%shared_ptr(chrono::vehicle::man::MAN_10t_Front1Axle)
+%shared_ptr(chrono::vehicle::man::MAN_10t_Front2Axle)
+
+%shared_ptr(chrono::vehicle::uaz::UAZBUS_ToeBarLeafspringAxle)
+%shared_ptr(chrono::vehicle::uaz::UAZBUS_LeafspringAxle)
+
 /* Parse the header file to generate wrappers */
 %import "ChSuspension.i"
 
@@ -81,6 +83,17 @@
 %include "../chrono_models/vehicle/hmmwv/HMMWV_DoubleWishbone.h"
 %include "../chrono_models/vehicle/hmmwv/HMMWV_DoubleWishboneReduced.h"
 
-
 %include "../chrono_models/vehicle/sedan/Sedan_DoubleWishbone.h"
 %include "../chrono_models/vehicle/sedan/Sedan_MultiLink.h"
+
+%include "../chrono_models/vehicle/citybus/CityBus_ToeBarLeafspringAxle.h"
+%include "../chrono_models/vehicle/citybus/CityBus_SolidAxle.h"
+%include "../chrono_models/vehicle/citybus/CityBus_LeafspringAxle.h"
+
+%include "../chrono_models/vehicle/man/MAN_5t_BellcrankSolid3LinkAxle.h"
+%include "../chrono_models/vehicle/man/MAN_5t_Solid3LinkAxle.h"
+%include "../chrono_models/vehicle/man/MAN_10t_Front1Axle.h"
+%include "../chrono_models/vehicle/man/MAN_10t_Front2Axle.h"
+
+%include "../chrono_models/vehicle/uaz/UAZBUS_ToeBarLeafspringAxle.h"
+%include "../chrono_models/vehicle/uaz/UAZBUS_LeafspringAxle.h"

@@ -15,7 +15,6 @@
 
 #include "chrono/solver/ChConstraintTuple.h"
 #include "chrono/physics/ChMaterialSurface.h"
-#include "chrono/core/ChVectorDynamic.h"
 #include "chrono/core/ChMatrix33.h"
 #include "chrono/timestepper/ChState.h"
 
@@ -29,8 +28,10 @@ class ChPhysicsItem;
 /// One should inherit from ChContactable_1vars, ChContactable_2vars  etc. depending
 /// on the number of ChVariable objects contained in the object (i.e. the variable chunks
 /// to whom the contact point position depends, also the variables affected by contact force).
-class ChContactable {
+class ChApi ChContactable {
   public:
+    virtual ~ChContactable() {}
+
     /// Tell if the object must be considered in collision detection
     virtual bool IsContactActive() = 0;
 
@@ -135,7 +136,7 @@ class ChContactable_1vars : public ChContactable, public ChVariableTupleCarrier_
                                                       type_constraint_tuple& jacobian_tuple_N,
                                                       type_constraint_tuple& jacobian_tuple_U,
                                                       type_constraint_tuple& jacobian_tuple_V,
-                                                      bool second){};
+                                                      bool second) {}
 };
 
 // Note that template T1 and T2 are the number of DOFs in the referenced ChVariable s, 
@@ -163,7 +164,7 @@ class ChContactable_2vars : public ChContactable, public ChVariableTupleCarrier_
                                                       type_constraint_tuple& jacobian_tuple_N,
                                                       type_constraint_tuple& jacobian_tuple_U,
                                                       type_constraint_tuple& jacobian_tuple_V,
-                                                      bool second){};
+                                                      bool second) {}
 };
 
 // Note that template T1 and T2 and T3 are the number of DOFs in the referenced ChVariable s, 
@@ -191,8 +192,7 @@ class ChContactable_3vars : public ChContactable, public ChVariableTupleCarrier_
                                                       type_constraint_tuple& jacobian_tuple_N,
                                                       type_constraint_tuple& jacobian_tuple_U,
                                                       type_constraint_tuple& jacobian_tuple_V,
-                                                      bool second){};
-
+                                                      bool second) {}
 };
 
 }  // end namespace chrono

@@ -19,22 +19,19 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-// make windows behave with math
-#define _USE_MATH_DEFINES
 #include <cmath>
-#include "chrono_granular/ChApiGranular.h"
-#include "chrono/core/ChVector.h"
+#include "chrono_granular/api/ChApiGranular.h"
 #include "chrono_granular/ChGranularDefines.h"
 #include "chrono_granular/physics/ChGranularBoundaryConditions.h"
-#include "chrono/core/ChMathematics.h"
-#include "cudalloc.hpp"
+#include "ChGranularCUDAalloc.hpp"
 
 typedef unsigned char not_stupid_bool;
 
-/// @addtogroup granular_physics
-/// @{
 namespace chrono {
 namespace granular {
+
+/// @addtogroup granular_physics
+/// @{
 
 /// Used to compute position as a function of time
 typedef std::function<double3(float)> GranPositionFunction;
@@ -119,7 +116,7 @@ struct ChGranSphereData {
 enum GRAN_VERBOSITY { QUIET = 0, INFO = 1, METRICS = 2 };
 
 /// Output mode of system
-enum GRAN_OUTPUT_MODE { CSV, BINARY, NONE };
+enum GRAN_OUTPUT_MODE { CSV, BINARY, HDF5, NONE };
 /// How are we integrating through time
 enum GRAN_TIME_INTEGRATOR { FORWARD_EULER, CHUNG, CENTERED_DIFFERENCE, EXTENDED_TAYLOR };
 
@@ -127,7 +124,10 @@ enum GRAN_TIME_INTEGRATOR { FORWARD_EULER, CHUNG, CENTERED_DIFFERENCE, EXTENDED_
 enum GRAN_FRICTION_MODE { FRICTIONLESS, SINGLE_STEP, MULTI_STEP };
 
 /// Rolling resistance models -- ELASTIC_PLASTIC not implemented yet
-enum GRAN_ROLLING_MODE { NO_RESISTANCE, CONSTANT_TORQUE, VISCOUS, ELASTIC_PLASTIC };
+enum GRAN_ROLLING_MODE { NO_RESISTANCE, CONSTANT_TORQUE, VISCOUS, ELASTIC_PLASTIC, SCHWARTZ };
+
+enum GRAN_OUTPUT_FLAGS { ABSV = 1, VEL_COMPONENTS = 2, FIXITY = 4, ANG_VEL_COMPONENTS = 8 };
+#define GET_OUTPUT_SETTING(setting) (this->output_flags & setting)
 
 /// Parameters needed for sphere-based granular dynamics. This structure is stored in CUDA unified memory so that it can
 /// be accessed from both host and device
@@ -155,6 +155,11 @@ struct ChGranParams {
     float rolling_coeff_s2s_SU;
     /// Coefficient of rolling resistance sphere-to-wall
     float rolling_coeff_s2w_SU;
+
+    /// Coefficient of spinning resistance sphere-to-sphere
+    float spinning_coeff_s2s_SU;
+    /// Coefficient of spinning resistance sphere-to-wall
+    float spinning_coeff_s2w_SU;
 
     /// sphere-to-sphere normal contact damping coefficient, expressed in SU
     float Gamma_n_s2s_SU;
@@ -246,6 +251,9 @@ struct ChGranParams {
     /// Used as a safety check to determine whether a system has lost stability
     float max_safe_vel = (float)UINT_MAX;
 };
+
+/// @} granular_physics
+
 }  // namespace granular
 }  // namespace chrono
 
@@ -254,8 +262,12 @@ struct ChGranParams {
 typedef const chrono::granular::ChGranParams* GranParamsPtr;
 /// Get handle for the sphere data that skips namespacing and enforces const-ness
 typedef const chrono::granular::ChGranSphereData* GranSphereDataPtr;
+
 namespace chrono {
 namespace granular {
+
+/// @addtogroup granular_physics
+/// @{
 
 /**
  * \brief Main Chrono::Granular system class used to control and dispatch the GPU
@@ -296,7 +308,7 @@ class CH_GRANULAR_API ChSystemGranularSMC {
                             bool outward_normal,
                             bool track_forces);
 
-    /// Create an z-axis aligned cone boundary condition
+    /// Create plane boundary condition
     size_t Create_BC_Plane(float plane_pos[3], float plane_normal[3], bool track_forces);
 
     /// Create an z-axis aligned cylinder boundary condition
@@ -309,12 +321,12 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     bool disable_BC_by_ID(size_t BC_id) {
         size_t max_id = BC_params_list_SU.size();
         if (BC_id >= max_id) {
-            printf("ERROR: Trying to disable invalid BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to disable invalid BC ID %zu\n", BC_id);
             return false;
         }
 
         if (BC_id <= NUM_RESERVED_BC_IDS - 1) {
-            printf("ERROR: Trying to modify reserved BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to modify reserved BC ID %zu\n", BC_id);
             return false;
         }
         BC_params_list_UU.at(BC_id).active = false;
@@ -326,11 +338,11 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     bool enable_BC_by_ID(size_t BC_id) {
         size_t max_id = BC_params_list_SU.size();
         if (BC_id >= max_id) {
-            printf("ERROR: Trying to enable invalid BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to enable invalid BC ID %zu\n", BC_id);
             return false;
         }
         if (BC_id <= NUM_RESERVED_BC_IDS - 1) {
-            printf("ERROR: Trying to modify reserved BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to modify reserved BC ID %zu\n", BC_id);
             return false;
         }
         BC_params_list_UU.at(BC_id).active = true;
@@ -342,11 +354,11 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     bool set_BC_offset_function(size_t BC_id, const GranPositionFunction& offset_function) {
         size_t max_id = BC_params_list_SU.size();
         if (BC_id >= max_id) {
-            printf("ERROR: Trying to set offset function for invalid BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to set offset function for invalid BC ID %zu\n", BC_id);
             return false;
         }
         if (BC_id <= NUM_RESERVED_BC_IDS - 1) {
-            printf("ERROR: Trying to modify reserved BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to modify reserved BC ID %zu\n", BC_id);
             return false;
         }
         BC_offset_function_list.at(BC_id) = offset_function;
@@ -359,19 +371,19 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     bool getBCReactionForces(size_t BC_id, float forces[3]) const {
         size_t max_id = BC_params_list_SU.size();
         if (BC_id >= max_id) {
-            printf("ERROR: Trying to get forces for invalid BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to get forces for invalid BC ID %zu\n", BC_id);
             return false;
         }
         if (BC_id <= NUM_RESERVED_BC_IDS - 1) {
-            printf("ERROR: Trying to modify reserved BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to modify reserved BC ID %zu\n", BC_id);
             return false;
         }
         if (BC_params_list_SU.at(BC_id).track_forces == false) {
-            printf("ERROR: Trying to get forces for non-force-tracking BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to get forces for non-force-tracking BC ID %zu\n", BC_id);
             return false;
         }
         if (BC_params_list_SU.at(BC_id).active == false) {
-            printf("ERROR: Trying to get forces for inactive BC ID %lu\n", BC_id);
+            printf("ERROR: Trying to get forces for inactive BC ID %zu\n", BC_id);
             return false;
         }
         float3 reaction_forces = BC_params_list_SU.at(BC_id).reaction_forces;
@@ -385,12 +397,12 @@ class CH_GRANULAR_API ChSystemGranularSMC {
 
     /// Set the output mode of the simulation
     void setOutputMode(GRAN_OUTPUT_MODE mode) { file_write_mode = mode; }
-    /// Set the simulation's output directory, files are output as step%06d, where the number is replaced by the current
-    /// render frame. This directory is assumed to be created by the user, either manually or in the driver file.
-    void setOutputDirectory(std::string dir) { output_directory = dir; }
 
     /// Set simualtion verbosity -- used to check on very large, slow simulations or debug
     void setVerbose(GRAN_VERBOSITY level) { verbosity = level; }
+
+    /// Set output settings bit flags by bitwise ORing settings in GRAN_OUTPUT_FLAGS
+    void setOutputFlags(unsigned char flags) { output_flags = flags; }
 
     /// Set timestep size
     void set_fixed_stepSize(float size_UU) { stepSize_UU = size_UU; }
@@ -429,6 +441,11 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     /// Set sphere-to-wall rolling friction coefficient -- units and use vary by rolling friction mode
     void set_rolling_coeff_SPH2WALL(float mu) { rolling_coeff_s2w_UU = mu; }
 
+    /// Set sphere-to-sphere spinning friction coefficient -- units and use vary by spinning friction mode
+    void set_spinning_coeff_SPH2SPH(float mu) { spinning_coeff_s2s_UU = mu; }
+    /// Set sphere-to-wall spinning friction coefficient -- units and use vary by spinning friction mode
+    void set_spinning_coeff_SPH2WALL(float mu) { spinning_coeff_s2w_UU = mu; }
+
     /// Set sphere-to-sphere normal contact stiffness
     void set_K_n_SPH2SPH(double someValue) { K_n_s2s_UU = someValue; }
     /// Set sphere-to-wall normal contact stiffness
@@ -459,7 +476,8 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     void set_BD_Fixed(bool fixed) { BD_is_fixed = fixed; }
 
     /// Set initial particle positions. MUST be called only once and MUST be called before initialize
-    void setParticlePositions(const std::vector<ChVector<float>>& points);
+    void setParticlePositions(const std::vector<float3>& points,
+                              const std::vector<float3>& vels = std::vector<float3>());
 
     /// Set particle fixity. MUST be called only once and MUST be called before initialize
     void setParticleFixed(const std::vector<bool>& fixed);
@@ -487,7 +505,7 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     /// Copy back the subdomain device data and save it to a file for error checking on the priming kernel
     void checkSDCounts(std::string ofile, bool write_out, bool verbose) const;
     /// Writes out particle positions according to the system output mode
-    void writeFile(std::string ofile, bool write_vel_components = false) const;
+    void writeFile(std::string ofile) const;
 
     /// Safety check velocity to ensure the simulation is still stable
     void setMaxSafeVelocity_SU(float max_vel) { gran_params->max_safe_vel = max_vel; }
@@ -534,11 +552,13 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     /// Allows the code to be very verbose for debugging
     GRAN_VERBOSITY verbosity;
 
+    /// Bit flags indicating what fields to write out during writeFile
+    /// Set with the GRAN_OUTPUT_FLAGS enum
+    unsigned char output_flags;
+
     /// How to write the output files?
     /// Default is CSV
     GRAN_OUTPUT_MODE file_write_mode;
-    /// Directory to write to, this code assumes it already exists
-    std::string output_directory;
 
     /// Number of discrete elements
     unsigned int nSpheres;
@@ -716,6 +736,13 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     /// Units and use are dependent on the rolling friction model used
     double rolling_coeff_s2w_UU;
 
+    /// Spinning friction coefficient for sphere-to-sphere
+    double spinning_coeff_s2s_UU;
+
+    /// Spinning friction coefficient for sphere-to-wall
+    /// Units and use are dependent on the spinning friction model used
+    double spinning_coeff_s2w_UU;
+
     /// Store the ratio of the acceleration due to cohesion vs the acceleration due to gravity, makes simple API
     float cohesion_over_gravity;
 
@@ -747,7 +774,10 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     const float box_size_Z;
 
     /// User-provided sphere positions in UU
-    std::vector<ChVector<float>> user_sphere_positions;
+    std::vector<float3> user_sphere_positions;
+
+    /// User-provided sphere velocities in UU
+    std::vector<float3> user_sphere_vel;
 
     /// User-provided sphere fixity as bools
     std::vector<bool> user_sphere_fixed;
@@ -756,7 +786,7 @@ class CH_GRANULAR_API ChSystemGranularSMC {
     bool BD_is_fixed = true;
 };
 
+/// @} granular_physics
+
 }  // namespace granular
 }  // namespace chrono
-
-/// @} granular_physics

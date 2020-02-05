@@ -14,8 +14,6 @@
 
 #pragma once
 
-//#include "chrono_granular/ChGranularDefines.h"
-#include "chrono/geometry/ChTriangleMeshConnected.h"
 #include "chrono_granular/physics/ChGranular.h"
 
 namespace chrono {
@@ -93,6 +91,9 @@ struct ChGranParams_trimesh {
     /// Coefficient of rolling resistance. Units and effect depend on the system rolling resistance model
     float rolling_coeff_s2m_SU;
 
+    /// Coefficient of spinning resistance. Units and effect depend on the system spinning resistance model
+    float spinning_coeff_s2m_SU;
+
     /// Number of triangle families
     unsigned int num_triangle_families;
 
@@ -136,12 +137,6 @@ class CH_GRANULAR_API ChSystemGranularSMC_trimesh : public ChSystemGranularSMC {
     virtual double advance_simulation(float duration) override;
     // override of parent initialize function
     virtual void initialize() override;
-    /// Load triangle meshes into granular system. MUST happen before initialize is called
-    void load_meshes(std::vector<std::string> objfilenames,
-                     std::vector<float3> scalefactors,
-                     std::vector<float> masses,
-                     std::vector<bool> inflated,
-                     std::vector<float> inflation_radii);
 
     /// Write visualization files for triangle meshes with current positions
     void write_meshes(std::string outfilename);
@@ -153,11 +148,15 @@ class CH_GRANULAR_API ChSystemGranularSMC_trimesh : public ChSystemGranularSMC {
     void set_static_friction_coeff_SPH2MESH(float mu) { tri_params->static_friction_coeff_s2m = mu; }
     // set internally and convert later
     void set_rolling_coeff_SPH2MESH(float mu) { rolling_coeff_s2s_UU = mu; }
+    void set_spinning_coeff_SPH2MESH(float mu) { spinning_coeff_s2s_UU = mu; }
 
     /// Enable mesh contact
     void enableMeshCollision() { mesh_collision_enabled = true; }
     /// Disable mesh contact
     void disableMeshCollision() { mesh_collision_enabled = false; }
+
+    ChTriangleSoup<float3>* getMeshSoup() { return meshSoup; }
+    ChGranParams_trimesh* getTriParams() { return tri_params; }
 
   protected:
     /// Create a helper to do triangle initialization
@@ -181,6 +180,9 @@ class CH_GRANULAR_API ChSystemGranularSMC_trimesh : public ChSystemGranularSMC {
     /// Rolling friction coefficient for sphere-to-mesh -- units and effect depend on rolling resistance model
     double rolling_coeff_s2m_UU;
 
+    /// Spinning friction coefficient for sphere-to-mesh -- units and effect depend on spinning resistance model
+    double spinning_coeff_s2m_UU;
+
     /// Ratio of sphere-to-mesh adhesion to gravity (constant adhesion model)
     float adhesion_s2m_over_gravity;
 
@@ -201,13 +203,6 @@ class CH_GRANULAR_API ChSystemGranularSMC_trimesh : public ChSystemGranularSMC {
     /// Reset computed forces and torques on each triangle family
     void resetTriangleForces();
 
-    /// Setup data structures associated with triangle mesh
-    void setupTriMesh(const std::vector<chrono::geometry::ChTriangleMeshConnected>& all_meshes,
-                      unsigned int nTriangles,
-                      std::vector<float> masses,
-                      std::vector<bool> inflated,
-                      std::vector<float> inflation_radii);
-
     /// Clean up data structures associated with triangle mesh
     void cleanupTriMesh();
 
@@ -219,8 +214,7 @@ class CH_GRANULAR_API ChSystemGranularSMC_trimesh : public ChSystemGranularSMC {
     template <typename T>
     void generate_rot_matrix(double* ep, T* rot_mat);
 
-    template <class T>
-    ChVector<T> ApplyFrameTransform(ChVector<T>& p, T* pos, T* rot_mat);
+    void ApplyFrameTransform(float3& p, float* pos, float* rot_mat);
 };
 /// @} granular_physics
 

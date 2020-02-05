@@ -57,7 +57,6 @@
 #include "chrono/physics/ChNodeXYZ.h"
 #include "chrono/physics/ChLoadsXYZnode.h"
 #include "chrono/physics/ChTensors.h"
-#include "chrono/physics/ChContinuumMaterial.h"
 #include "chrono/physics/ChIndexedNodes.h"
 #include "chrono/assets/ChLineShape.h"
 #include "chrono/assets/ChPathShape.h"
@@ -65,12 +64,15 @@
 #include "chrono/assets/ChSurfaceShape.h"
 #include "chrono/assets/ChTriangleMeshShape.h"
 #include "chrono/assets/ChEllipsoidShape.h"
+#include "chrono/assets/ChGlyphs.h"
 #include "chrono/collision/ChCCollisionUtils.h"
+#include "chrono/collision/ChCCollisionSystem.h"
 #include "chrono/geometry/ChTriangleMesh.h"
 #include "chrono/geometry/ChTriangleMeshConnected.h"
 #include "chrono/geometry/ChTriangleMeshSoup.h"
 #include "chrono/core/ChBezierCurve.h"
-
+#include "Eigen/src/Core/util/Memory.h"
+#include "chrono/utils/ChUtilsInputOutput.h"
 using namespace chrono;
 using namespace chrono::collision;
 using namespace chrono::geometry;
@@ -80,11 +82,13 @@ using namespace chrono::fea;
 
 // Undefine ChApi otherwise SWIG gives a syntax error
 #define ChApi 
+#define EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#define CH_DEPRECATED(msg)
 
 %ignore CH_ENUM_MAPPER_BEGIN;
 %ignore CH_ENUM_VAL;
 %ignore CH_ENUM_MAPPER_END;
-
+%ignore CH_CLASS_VERSION;
 // Cross-inheritance between Python and c++ for callbacks that must be inherited.
 // Put this 'director' feature _before_ class wrapping declaration.
 
@@ -120,7 +124,6 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChFrameMoving<double>)
 
 //%shared_ptr(chrono::ChColor)
-%shared_ptr(chrono::ChColorAsset)
 %shared_ptr(chrono::ChObjShapeFile)
 %shared_ptr(chrono::ChBoxShape) 
 %shared_ptr(chrono::ChSphereShape)
@@ -135,6 +138,7 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChPointPointSpring)
 %shared_ptr(chrono::ChTriangleMeshShape)
 %shared_ptr(chrono::ChBezierCurve)
+%shared_ptr(chrono::ChGlyphs)
 
 %shared_ptr(chrono::ChFunction)  
 %shared_ptr(chrono::ChFunction_Const)
@@ -156,18 +160,13 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChFunction_Sigma)
 %shared_ptr(chrono::ChFunction_Sine)
 
-%shared_ptr(chrono::ChObj)
+
 %shared_ptr(chrono::collision::ChCollisionModel)
 %shared_ptr(chrono::ChPhysicsItem)
 %shared_ptr(chrono::ChIndexedNodes)
 %shared_ptr(chrono::ChMaterialSurfaceNSC)
 %shared_ptr(chrono::ChMaterialSurfaceSMC)
 %shared_ptr(chrono::ChMaterialSurface)
-%shared_ptr(chrono::ChContinuumMaterial)
-%shared_ptr(chrono::ChContinuumElastic)
-%shared_ptr(chrono::ChContinuumElastoplastic)
-%shared_ptr(chrono::ChContinuumPlasticVonMises)
-%shared_ptr(chrono::ChContinuumDruckerPrager)
 %shared_ptr(chrono::ChNodeBase)
 %shared_ptr(chrono::ChNodeXYZ)
 %shared_ptr(chrono::ChMarker)
@@ -185,13 +184,10 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChParticleBase)
 %shared_ptr(chrono::ChIndexedParticles)
 %shared_ptr(chrono::ChParticlesClones)
-// shared_ptr macros for ChIntegrable, Chtimestepper and their children classes moved into "ChTimestepper.i"
-%shared_ptr(chrono::ChSolver)
 %shared_ptr(chrono::ChSystemNSC)
 %shared_ptr(chrono::ChSystemSMC)
 %shared_ptr(chrono::ChContactContainer)
 %shared_ptr(chrono::ChProximityContainer)
-%shared_ptr(chrono::ChLoadContainer)
 
 %shared_ptr(chrono::ChLinkMarkers)
 %shared_ptr(chrono::ChLinkLimit)
@@ -213,6 +209,7 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChLinkRevoluteSpherical)
 %shared_ptr(chrono::ChLinkScrew)
 %shared_ptr(chrono::ChLinkSpring)
+%shared_ptr(chrono::ChLinkTSDA)
 %shared_ptr(chrono::ChLinkUniversal)
 %shared_ptr(chrono::ChLinkMotor)
 %shared_ptr(chrono::ChLinkMotorLinear)
@@ -227,27 +224,7 @@ using namespace chrono::fea;
 %shared_ptr(chrono::ChLinkMotorRotationTorque)
 %shared_ptr(chrono::ChLinkTrajectory)
 %shared_ptr(chrono::ChLinkPointSpline)
-%shared_ptr(chrono::ChLoadBase)
-%shared_ptr(chrono::ChLoad)
-%shared_ptr(chrono::ChLoadCustom)
-%shared_ptr(chrono::ChLoadCustomMultiple)
-%shared_ptr(chrono::ChLoadBodyForce)
-%shared_ptr(chrono::ChLoadBodyTorque)
-%shared_ptr(chrono::ChLoadBodyBody)
-%shared_ptr(chrono::ChLoadBodyBodyTorque)
-%shared_ptr(chrono::ChLoadBodyBodyBushingSpherical)
-%shared_ptr(chrono::ChLoadBodyBodyBushingPlastic)
-%shared_ptr(chrono::ChLoadBodyBodyBushingMate)
-%shared_ptr(chrono::ChLoadBodyBodyBushingPlastic)
-%shared_ptr(chrono::ChLoadBodyBodyBushingGeneric)
-%shared_ptr(chrono::ChLoadXYZnodeForce)
-%shared_ptr(chrono::ChLoadXYZnodeForceAbsolute)
-%shared_ptr(chrono::ChLoadXYZnodeXYZnode)
-%shared_ptr(chrono::ChLoadXYZnodeXYZnodeSpring)
-%shared_ptr(chrono::ChLoadXYZnodeXYZnodeBushing)
-%shared_ptr(chrono::ChLoadXYZnodeBody)
-%shared_ptr(chrono::ChLoadXYZnodeBodySpring)
-%shared_ptr(chrono::ChLoadXYZnodeBodyBushing)
+
 
 
 %shared_ptr(chrono::geometry::ChGeometry)
@@ -274,6 +251,8 @@ using namespace chrono::fea;
 %shared_ptr(chrono::geometry::ChTriangleMeshConnected)
 %shared_ptr(chrono::geometry::ChTriangleMeshSoup)
 
+
+
 //
 // B- INCLUDE HEADERS
 //
@@ -295,23 +274,22 @@ using namespace chrono::fea;
 //  core/  classes
 %include "ChException.i"
 %include "ChClassFactory.i"
-%include "../chrono/physics/ChGlobal.h"
+%include "../chrono/core/ChGlobal.h"
 //%include "ChArchive.i"
+%include "ChMatrix.i"
 %include "ChVector.i"
 #define Vector ChVector<double>
 %include "ChQuaternion.i"
 %include "../chrono/core/ChBezierCurve.h"
 #define Quaternion ChQuaternion<double>
+%include "ChMatrix33.i"
 %include "ChCoordsys.i"
 #define Coordsys ChCoordsys<double>
 %include "ChFrame.i"
 %include "ChFrameMoving.i"
-%include "ChLinearAlgebra.i"
 %include "ChStream.i"
 %include "ChLog.i"
 %include "ChMathematics.i"
-%include "ChMatrix.i"
-%include "ChVectorDynamic.i"
 %include "ChTimer.i"
 %include "ChRealtimeStep.i"
 %include "ChTransform.i"
@@ -324,6 +302,7 @@ using namespace chrono::fea;
 
 %include "ChCollisionModel.i"
 %include "../chrono/collision/ChCCollisionUtils.h"
+%include "../chrono/collision/ChCCollisionSystem.h"
 
 // assets
 %include "ChAsset.i"
@@ -343,13 +322,15 @@ using namespace chrono::fea;
 %include "../chrono/assets/ChSurfaceShape.h"
 %include "../chrono/assets/ChTriangleMeshShape.h"
 %include "../chrono/assets/ChEllipsoidShape.h"
+%include "../chrono/assets/ChGlyphs.h"
+
 
 // physics/  classes
 //%include "../chrono/physics/ChTensors.h"
 //%template(ChVoightTensorD) chrono::fea::ChVoightTensor<double>;
 //%template(ChStressTensorD) chrono::fea::ChStressTensor<double>;
 //%template(ChStrainTensorD) chrono::fea::ChStrainTensor<double>;
-%include "../chrono/physics/ChContinuumMaterial.h"
+%include "ChLoadable.i"
 %include "ChObject.i"
 %include "ChPhysicsItem.i"
 %include "../chrono/physics/ChIndexedNodes.h"
@@ -377,7 +358,8 @@ using namespace chrono::fea;
 %include "ChLinkPulley.i"
 %include "ChLinkScrew.i"
 %include "ChLinkSpring.i"
-%include "ChLinkSpringCB.i"
+%include "ChLinkTSDA.i"
+%include "ChLinkRSDA.i"
 %include "ChLinkGear.i"
 %include "ChLinkRevolute.i"
 %include "ChLinkRevoluteSpherical.i"
@@ -386,33 +368,23 @@ using namespace chrono::fea;
 %include "ChLinkPointSpline.i"
 %include "ChAssembly.i"
 %include "ChTimestepper.i"
-%include "../chrono/solver/ChSolver.h"
+%include "ChSolver.i"
 %include "ChContactContainer.i"
 %include "ChSystem.i"
 %include "ChSystemNSC.i"
 %include "ChSystemSMC.i"
 %include "ChProximityContainer.i"
-%import "../chrono/physics/ChLoad.h" // a forward reference done "the %import way" here works ok..
+
+%include "ChLoad.i"
 %include "ChLoadContainer.i"
 
 %include "ChShaft.i"
-/*%include "ChShaftsCouple.i"
-%include "ChShaftsBody.i"
-%include "ChShaftsClutch.i"
-%include "ChShaftsMotor.i"
-%include "ChShaftsTorqueBase.i"
-%include "ChShaftsTorsionSpring.i"
-%include "ChShaftsPlanetary.i"
-%include "ChShaftsThermalEngine.i"*/
+%include "ChShaftMotor.i"
 %include "ChLinkMotor.i"
-%include "../chrono/physics/ChLoad.h"
-%include "../chrono/physics/ChLoadsBody.h"
-%include "../chrono/physics/ChLoadsXYZnode.h"
-%include "../chrono/physics/ChLoadContainer.h"
 
+// Utils
 
-
-
+%include "../chrono/utils/ChUtilsInputOutput.h"
 
 //
 // C- DOWNCASTING OF SHARED POINTERS
@@ -488,7 +460,8 @@ using namespace chrono::fea;
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkPulley)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkScrew)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkSpring)
-%DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkSpringCB)
+%DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkTSDA)
+%DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkRotSpringCB)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkMotor)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkMotorLinear)
 %DefSharedPtrDynamicDowncast(chrono,ChPhysicsItem, ChLinkMotorLinearDriveline)
@@ -531,6 +504,7 @@ using namespace chrono::fea;
 %DefSharedPtrDynamicDowncast(chrono,ChLink, ChLinkPulley)
 %DefSharedPtrDynamicDowncast(chrono,ChLink, ChLinkScrew)
 %DefSharedPtrDynamicDowncast(chrono,ChLink, ChLinkSpring)
+%DefSharedPtrDynamicDowncast(chrono,ChLink, ChLinkTSDA)
 %DefSharedPtrDynamicDowncast(chrono,ChLink, ChLinkPointSpline) 
 %DefSharedPtrDynamicDowncast(chrono,ChLink, ChLinkTrajectory)
 

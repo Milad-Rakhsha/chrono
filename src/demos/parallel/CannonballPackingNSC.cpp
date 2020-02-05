@@ -27,6 +27,7 @@
 #include "chrono_thirdparty/filesystem/resolver.h"
 
 #include "chrono_parallel/physics/Ch3DOFContainer.h"
+#include "Utils.h"
 
 #ifdef CHRONO_OPENGL
 #include "chrono_opengl/ChOpenGLWindow.h"
@@ -50,29 +51,6 @@ std::string out_folder = "CannonballNSC_APGD_reg/";
 int num_ball_x = 5;
 double sphere_radius = 0.1;
 real tolerance = 0.0;
-
-// -----------------------------------------------------------------------------
-// save csv data file
-// -----------------------------------------------------------------------------
-void writeCSV(ChSystemParallel* msystem, int out_frame) {
-    char filename2[100];
-    sprintf(filename2, "%s/NSC_%04d.csv", out_folder.c_str(), out_frame + 1);
-
-    const std::string& delim = ",";
-    utils::CSV_writer csv(delim);
-    int numMarkers = msystem->data_manager->host_data.pos_rigid.size();
-    csv << "x,y,z,vx,vy,vz,|U|" << std::endl;
-    for (int i = 0; i < numMarkers; i++) {
-        real3 pos3 = msystem->data_manager->host_data.pos_rigid[i];
-        real vx = msystem->data_manager->host_data.v[6 * i];
-        real vy = msystem->data_manager->host_data.v[6 * i + 1];
-        real vz = msystem->data_manager->host_data.v[6 * i + 2];
-        real u = sqrt(vx * vx + vy * vy + vz * vz);
-        csv << pos3.x << pos3.y << pos3.z << vx << vy << vz << u << std::endl;
-    }
-
-    csv.write_to_file(filename2);
-}
 
 // -----------------------------------------------------------------------------
 // Create the falling spherical objects in a uniform rectangular grid.
@@ -276,7 +254,7 @@ int main(int argc, char* argv[]) {
 
         // If enabled, output data for PovRay postprocessing.
         if (i == next_out_frame) {
-            writeCSV(&msystem, out_frame);
+            writeCSV(&msystem, out_frame, out_folder);
             out_frame++;
             next_out_frame += out_steps;
             DynamicVector<real>& gamma = msystem.data_manager->host_data.gamma;

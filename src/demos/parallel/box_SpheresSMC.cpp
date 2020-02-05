@@ -25,6 +25,7 @@
 #include "chrono/utils/ChUtilsGenerators.h"
 #include "chrono_thirdparty/filesystem/path.h"
 #include "chrono_thirdparty/filesystem/resolver.h"
+#include "Utils.h"
 
 std::string out_folder = "Box_Spheres/";
 #ifdef CHRONO_OPENGL
@@ -40,28 +41,6 @@ double friction = 0.1f;
 ChVector<> hdim(2, 2, 0.1);
 
 double sphere_radius = 0.1;
-// -----------------------------------------------------------------------------
-// save csv data file
-// -----------------------------------------------------------------------------
-void writeCSV(ChSystemParallel* msystem, int out_frame) {
-    char filename2[100];
-    sprintf(filename2, "%s/SMC_%04d.csv", out_folder.c_str(), out_frame + 1);
-
-    const std::string& delim = ",";
-    utils::CSV_writer csv(delim);
-    int numMarkers = msystem->data_manager->host_data.pos_rigid.size();
-    csv << "t,x,y,z,vx,vy,vz,|U|" << std::endl;
-    for (int i = 0; i < numMarkers; i++) {
-        real3 pos3 = msystem->data_manager->host_data.pos_rigid[i];
-        real vx = msystem->data_manager->host_data.v[6 * i];
-        real vy = msystem->data_manager->host_data.v[6 * i + 1];
-        real vz = msystem->data_manager->host_data.v[6 * i + 2];
-        real u = sqrt(vx * vx + vy * vy + vz * vz);
-        csv << msystem->GetChTime() << pos3.x << pos3.y << pos3.z << vx << vy << vz << std::endl;
-    }
-
-    csv.write_to_file(filename2);
-}
 
 // -----------------------------------------------------------------------------
 // Create the falling spherical objects in a uniform rectangular grid.
@@ -144,7 +123,7 @@ int main(int argc, char* argv[]) {
     double gravity = 10;
     double time_step = 1e-4;
     double time_end = 0.5;
-    double out_fps = 1000;
+    double out_fps = 100;
 
     double push = atof(argv[1]);
 
@@ -213,9 +192,9 @@ int main(int argc, char* argv[]) {
         double t = msystem.GetChTime();
         double f = push * friction * box_mass * gravity;
 
-        if (t > 0.1) {
+        if (i > num_steps / 2) {
             box->Empty_forces_accumulators();
-            box->Accumulate_force(ChVector<>(f, 0, 0), ChVector<>(0, 0, -hdim.z()), true);
+            box->Accumulate_force(ChVector<>(i / num_steps * f, 0, 0), ChVector<>(0, 0, -hdim.z()), true);
         }
         msystem.DoStepDynamics(time_step);
         // If enabled, output data for PovRay postprocessing.
@@ -223,7 +202,7 @@ int main(int argc, char* argv[]) {
             std::cout << time << ", Nc= " << msystem.data_manager->host_data.bids_rigid_rigid.size() << std::endl;
             printf("tangential force =%f\n", f);
 
-            writeCSV(&msystem, out_frame);
+            writeCSV(&msystem, out_frame, out_folder);
             next_out_frame += out_steps;
             std::ofstream ofile(out_folder + "F_SCM_" + std::to_string(out_frame) + ".txt");
 

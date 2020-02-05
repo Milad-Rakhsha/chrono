@@ -27,6 +27,7 @@
 #include "chrono_thirdparty/filesystem/resolver.h"
 
 #include "chrono_parallel/physics/Ch3DOFContainer.h"
+#include "Utils.h"
 
 #ifdef CHRONO_OPENGL
 #include "chrono_opengl/ChOpenGLWindow.h"
@@ -50,28 +51,6 @@ std::string out_folder = "Box_Spheres";
 int num_ball_x = 10;
 double sphere_radius = 0.1;
 ChVector<> box_dim;
-// -----------------------------------------------------------------------------
-// save csv data file
-// -----------------------------------------------------------------------------
-void writeCSV(ChSystemParallel* msystem, int out_frame) {
-    char filename2[100];
-    sprintf(filename2, "%s/data_%04d.csv", out_folder.c_str(), out_frame + 1);
-
-    const std::string& delim = ",";
-    utils::CSV_writer csv(delim);
-    int numMarkers = msystem->data_manager->host_data.pos_rigid.size();
-    csv << "t,x,y,z,vx,vy,vz,|U|" << std::endl;
-    for (int i = 0; i < numMarkers; i++) {
-        real3 pos3 = msystem->data_manager->host_data.pos_rigid[i];
-        real vx = msystem->data_manager->host_data.v[6 * i];
-        real vy = msystem->data_manager->host_data.v[6 * i + 1];
-        real vz = msystem->data_manager->host_data.v[6 * i + 2];
-        real u = sqrt(vx * vx + vy * vy + vz * vz);
-        csv << msystem->GetChTime() << pos3.x << pos3.y << pos3.z << vx << vy << vz << std::endl;
-    }
-
-    csv.write_to_file(filename2);
-}
 
 // -----------------------------------------------------------------------------
 // Create the falling spherical objects in a uniform rectangular grid.
@@ -292,8 +271,11 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < num_steps; i++) {
         if (i > num_steps / 2) {
             box->Empty_forces_accumulators();
+            //            double F = push_fraction * friction * box_mass * gravity * 2 * (i - num_steps / 2) /
+            //            num_steps;
+            //            double F = push_fraction * friction * box_mass * gravity;
             box->Accumulate_force(ChVector<>(friction * box_mass * gravity / 2, 0, 0),
-                                  ChVector<>(0, 0, -box_dim.z() / 2), true);
+                                  ChVector<>(0, 0, -box_dim.z() / 2 * 0), true);
         }
         msystem.DoStepDynamics(time_step);
         std::cout << time << " " << msystem.data_manager->measures.solver.residual << " "
@@ -303,7 +285,7 @@ int main(int argc, char* argv[]) {
 
         // If enabled, output data for PovRay postprocessing.
         if (i == next_out_frame) {
-            writeCSV(&msystem, out_frame);
+            writeCSV(&msystem, out_frame, out_folder);
             out_frame++;
             next_out_frame += out_steps;
             std::ofstream ofile(out_folder + "_forces" + std::to_string(out_frame) + ".txt");

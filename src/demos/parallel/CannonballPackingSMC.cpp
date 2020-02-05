@@ -11,7 +11,6 @@
 // =============================================================================
 // Authors: Milad Rakhsha
 // =============================================================================
-
 #include <cstdio>
 #include <vector>
 #include <cmath>
@@ -25,6 +24,7 @@
 #include "chrono/utils/ChUtilsGenerators.h"
 #include "chrono_thirdparty/filesystem/path.h"
 #include "chrono_thirdparty/filesystem/resolver.h"
+#include "Utils.h"
 
 #include "chrono_parallel/physics/Ch3DOFContainer.h"
 
@@ -38,33 +38,10 @@ std::shared_ptr<ChBody> box;
 
 double box_mass = 1.0;
 double friction = 0.5f;
-std::string out_folder = "CannonballSMC_20particle/";
-int num_ball_x = 20;
+std::string out_folder = "CannonballSMC";
+int num_ball_x = 5;
 
 double sphere_radius = 0.1;
-// -----------------------------------------------------------------------------
-// save csv data file
-// -----------------------------------------------------------------------------
-void writeCSV(ChSystemParallel* msystem, int out_frame) {
-    char filename2[100];
-    sprintf(filename2, "%s/SMC_%04d.csv", out_folder.c_str(), out_frame + 1);
-
-    const std::string& delim = ",";
-    utils::CSV_writer csv(delim);
-    int numMarkers = msystem->data_manager->host_data.pos_rigid.size();
-    csv << "t,x,y,z,vx,vy,vz,|U|" << std::endl;
-    for (int i = 0; i < numMarkers; i++) {
-        real3 pos3 = msystem->data_manager->host_data.pos_rigid[i];
-        real vx = msystem->data_manager->host_data.v[6 * i];
-        real vy = msystem->data_manager->host_data.v[6 * i + 1];
-        real vz = msystem->data_manager->host_data.v[6 * i + 2];
-        real u = sqrt(vx * vx + vy * vy + vz * vz);
-        csv << msystem->GetChTime() << pos3.x << pos3.y << pos3.z << vx << vy << vz << std::endl;
-    }
-
-    csv.write_to_file(filename2);
-}
-
 // -----------------------------------------------------------------------------
 // Create the falling spherical objects in a uniform rectangular grid.
 // -----------------------------------------------------------------------------
@@ -121,6 +98,7 @@ void CreateModel(ChSystemParallel* sys) {
 // Create the system, specify simulation parameters, and run simulation loop.
 // -----------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
+    out_folder = out_folder + argv[1] + "/";
     // Simulation parameters
     // ---------------------
     double gravity = 10;
@@ -204,7 +182,7 @@ int main(int argc, char* argv[]) {
         if (i == next_out_frame) {
             std::cout << time << ", Nc= " << msystem.data_manager->host_data.bids_rigid_rigid.size() << std::endl;
 
-            writeCSV(&msystem, out_frame);
+            writeCSV(&msystem, out_frame, out_folder);
             out_frame++;
             next_out_frame += out_steps;
             std::ofstream ofile(out_folder + "F_SCM_" + std::to_string(out_frame) + ".txt");
@@ -212,15 +190,23 @@ int main(int argc, char* argv[]) {
             custom_vector<vec2>& pairs = msystem.data_manager->host_data.bids_rigid_rigid;
             custom_vector<real3>& gamma_N = msystem.data_manager->host_data.contact_force_N;
             custom_vector<real3>& gamma_T = msystem.data_manager->host_data.contact_force_T;
-            ofile << "bi,bj,Fn,Ft\n";
+            custom_vector<real3>& body_force = msystem.data_manager->host_data.ct_body_force;
 
+            ofile << "bi,bj,Fn,Ft\n";
             int N = pairs.size();
             std::cout << "num contacts: " << N << std::endl;
             for (int i = 0; i < N; i++)
                 ofile << pairs[i].x << "," << pairs[i].y << "," << Length(gamma_N[i]) << "," << Length(gamma_T[i])
                       << "\n";
-
             ofile.close();
+
+            std::ofstream obfile(out_folder + "F_SCM_body_" + std::to_string(out_frame) + ".txt");
+            int Nb = body_force.size();
+            obfile << "i,fx,fy,fz\n";
+            for (int i = 0; i < Nb; i++)
+                obfile << i << "," << body_force[i].x << "," << body_force[i].y << "," << body_force[i].z << "\n";
+
+            obfile.close();
         }
 
         time += time_step;

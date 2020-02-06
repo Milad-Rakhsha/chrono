@@ -185,16 +185,16 @@ int main(int argc, char* argv[]) {
     int max_threads = CHOMPfunctions::GetNumProcs();
     if (threads > max_threads)
         threads = max_threads;
-    msystem.SetParallelThreadNumber(threads);
+    
     CHOMPfunctions::SetNumThreads(threads);
 
     // Set gravitational acceleration
     msystem.Set_G_acc(ChVector<>(0, 0, -gravity));
 
     if (solver == 0) {
-        msystem.SetSolverType(ChSolver::Type::JACOBI);
+        msystem.SetSolverType(ChSolver::Type::PJACOBI);
     } else if (solver == 1) {
-        msystem.SetSolverType(ChSolver::Type::PCG);
+        msystem.SetSolverType(ChSolver::Type::PSOR);
     } else if (solver == 2) {
         msystem.SetSolverType(ChSolver::Type::APGD);
     } else if (solver == 3) {
@@ -221,8 +221,8 @@ int main(int argc, char* argv[]) {
     int next_out_frame = 0;
 
     // mphysicalSystem.SetUseSleeping(true);
-    msystem.SetMaxItersSolverSpeed(max_iteration);
-    msystem.SetSolverWarmStarting(false);
+    msystem.SetSolverMaxIterations(max_iteration);
+    //msystem.SetSolverWarmStarting(false);
     msystem.SetMaxPenetrationRecoverySpeed(0.0);
 
     vector<shared_ptr<ChBody>> blist = msystem.Get_bodylist();

@@ -62,11 +62,11 @@ void CreateModel(ChSystemParallel* sys) {
     double box_z = sphere_z + sphere_radius + hdim.z() + envelope;
 
     // Create the box material
-    std::shared_ptr<ChMaterialSurfaceNSC> mat_box = std::make_shared<ChMaterialSurfaceNSC>();
+    std::shared_ptr<ChMaterialSurfaceNSC> mat_box = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat_box->SetFriction(friction);
 
     // Create the middle ball material
-    std::shared_ptr<ChMaterialSurfaceNSC> mat = std::make_shared<ChMaterialSurfaceNSC>();
+    std::shared_ptr<ChMaterialSurfaceNSC> mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat->SetFriction(friction);
     if (use_compliance) {
         mat->SetCompliance(6.0e-5);
@@ -74,7 +74,7 @@ void CreateModel(ChSystemParallel* sys) {
     }
 
     // Create the corner balls' material
-    std::shared_ptr<ChMaterialSurfaceNSC> mat2 = std::make_shared<ChMaterialSurfaceNSC>();
+    std::shared_ptr<ChMaterialSurfaceNSC> mat2 = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat2->SetFriction(friction);
     if (use_compliance) {
         mat2->SetCompliance(1.0e-5);
@@ -82,11 +82,11 @@ void CreateModel(ChSystemParallel* sys) {
     }
 
     ChVector<> box_pos = ChVector<>(0, 0, box_z);
-    box = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>());
+    box = chrono_types::make_shared<ChBody>(chrono_types::make_shared<ChCollisionModelParallel>());
     box->SetMaterialSurface(mat_box);
     box->SetIdentifier(0);
     box->SetMass(box_mass);
-    box->SetInertiaXX(utils::CalcBoxGyration(hdim).Get_Diag());
+    box->SetInertiaXX(utils::CalcBoxGyration(hdim).diagonal());
     box->SetPos(box_pos);
     box->SetRot(QUNIT);
     box->SetBodyFixed(false);
@@ -105,7 +105,7 @@ void CreateModel(ChSystemParallel* sys) {
             if ((x * y == 0) && (x + y != 0))
                 continue;
             ChVector<> pos = ChVector<>(x, y, sphere_z);
-            auto ball = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>());
+            auto ball = chrono_types::make_shared<ChBody>(chrono_types::make_shared<ChCollisionModelParallel>());
             // Use a different material type for the middle ball
             if (x == 0 && y == 0)
                 ball->SetMaterialSurface(mat2);
@@ -187,7 +187,7 @@ int main(int argc, char* argv[]) {
     int max_threads = CHOMPfunctions::GetNumProcs();
     if (threads > max_threads)
         threads = max_threads;
-    msystem.SetParallelThreadNumber(threads);
+    
     CHOMPfunctions::SetNumThreads(threads);
 
     // Set gravitational acceleration

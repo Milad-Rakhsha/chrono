@@ -70,11 +70,11 @@ void AddContainer(ChSystemParallelNSC* sys) {
     int binId = -200;
 
     // Create a common material
-    auto mat = std::make_shared<ChMaterialSurfaceNSC>();
+    auto mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat->SetFriction(0.4f);
 
     // Create the containing bin (4 x 4 x 1)
-    auto bin = std::make_shared<ChBody>(new ChCollisionModelParallel);
+    auto bin = chrono_types::make_shared<ChBody>(new ChCollisionModelParallel);
 
     bin->SetMaterialSurface(mat);
     bin->SetIdentifier(binId);
@@ -96,7 +96,7 @@ void AddContainer(ChSystemParallelNSC* sys) {
 // -----------------------------------------------------------------------------
 void AddFallingBalls(ChSystemParallel* sys) {
     // Common material
-    auto ballMat = std::make_shared<ChMaterialSurfaceNSC>();
+    auto ballMat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     ballMat->SetFriction(0.4f);
 
     // Create the falling balls
@@ -110,7 +110,7 @@ void AddFallingBalls(ChSystemParallel* sys) {
 
     for (int i = 0; i < points.size(); i++) {
         ChVector<> pos = points[i] + ChVector<>(0, 0, 15);
-        auto ball = std::make_shared<ChBody>(new ChCollisionModelParallel);
+        auto ball = chrono_types::make_shared<ChBody>(new ChCollisionModelParallel);
         ball->SetMaterialSurface(ballMat);
 
         ball->SetIdentifier(ballId++);

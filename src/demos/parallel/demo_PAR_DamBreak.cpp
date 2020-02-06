@@ -215,7 +215,7 @@ void InitSystem(ChSystemParallelNSC& msystem) {
     //    int max_threads = 2;//CHOMPfunctions::GetNumProcs();
     //    if (threads > max_threads)
     //        threads = max_threads;
-    msystem.SetParallelThreadNumber(threads);
+    
     CHOMPfunctions::SetNumThreads(threads);
 
     // Set gravitational acceleration
@@ -242,7 +242,7 @@ void InitSystem(ChSystemParallelNSC& msystem) {
 // Initialize fluid system and integration properties
 // -----------------------------------------------------------------------------
 void InitFluidSystem(ChSystemParallelNSC* sys) {
-    fluidSystem = std::make_shared<ChFluidContainer>();
+    fluidSystem = chrono_types::make_shared<ChFluidContainer>();
 
     fluidSystem->contact_cohesion = 0;
     fluidSystem->contact_mu = 0.0;
@@ -275,7 +275,7 @@ void InitFluidSystem(ChSystemParallelNSC* sys) {
 // -----------------------------------------------------------------------------
 void AddTank(ChSystemParallelNSC* sys) {
     // Create a common material
-    auto mat = std::make_shared<ChMaterialSurfaceNSC>();
+    auto mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat->SetFriction(0.4f);
 
     tank = utils::CreateBoxContainer(sys, tankId, mat, hdim + ChVector<>(0.0, 0.0, 0.0), particle_dist, tankInitPos,
@@ -288,10 +288,10 @@ void AddTank(ChSystemParallelNSC* sys) {
 // -----------------------------------------------------------------------------
 void ConstrainTank(ChSystemParallelNSC* sys) {
     // Create ground
-    auto mat = std::make_shared<ChMaterialSurfaceNSC>();
+    auto mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat->SetFriction(0.4f);
 
-    auto ground = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>());
+    auto ground = chrono_types::make_shared<ChBody>(chrono_types::make_shared<ChCollisionModelParallel>());
     ground->SetMaterialSurface(mat);
     ground->SetIdentifier(groundID);
     ground->SetMass(1);
@@ -309,7 +309,7 @@ void ConstrainTank(ChSystemParallelNSC* sys) {
     // Add prismatic joint
     // ------------------
     tank->SetBodyFixed(false);
-    auto platformPrismaticJoint = std::make_shared<ChLinkLockPrismatic>();
+    auto platformPrismaticJoint = chrono_types::make_shared<ChLinkLockPrismatic>();
     platformPrismaticJoint->Initialize(tank, ground, ChCoordsys<>(tank->GetPos(), Q_from_AngAxis(CH_C_PI / 2, VECT_Y)));
     sys->AddLink(platformPrismaticJoint);
 }

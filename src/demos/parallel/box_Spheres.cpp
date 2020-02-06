@@ -60,7 +60,7 @@ void CreateModel(ChSystemParallel* sys) {
     double envelope = sphere_radius * 0.05;
 
     // Create the middle ball material
-    std::shared_ptr<ChMaterialSurfaceNSC> mat = std::make_shared<ChMaterialSurfaceNSC>();
+    std::shared_ptr<ChMaterialSurfaceNSC> mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
     mat->SetFriction(friction);
 
     int ballId = 0;
@@ -71,7 +71,7 @@ void CreateModel(ChSystemParallel* sys) {
     for (int x = 0; x < num_ball_x; x++) {
         for (int y = 0; y < num_ball_x; y++) {
             ChVector<> pos = ChVector<>(x * shift, y * shift, sphere_z);
-            auto ball = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>());
+            auto ball = chrono_types::make_shared<ChBody>(chrono_types::make_shared<ChCollisionModelParallel>());
             ball->SetMaterialSurface(mat);
             ball->SetIdentifier(ballId);
             printf("ball %d was added.\n", ballId);
@@ -92,11 +92,11 @@ void CreateModel(ChSystemParallel* sys) {
     double box_x = (num_ball_x - 1) * shift;
     box_dim = ChVector<double>(box_x, box_x, 0.2);
     ChVector<double> box_pos(box_x / 2, box_x / 2, +box_dim.z() / 2 + 2 * sphere_radius + envelope);
-    box = std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>());
+    box = chrono_types::make_shared<ChBody>(chrono_types::make_shared<ChCollisionModelParallel>());
     box->SetMaterialSurface(mat);
     box->SetIdentifier(ballId);
     box->SetMass(box_mass);
-    box->SetInertiaXX(utils::CalcBoxGyration(box_dim / 2).Get_Diag());
+    box->SetInertiaXX(utils::CalcBoxGyration(box_dim / 2).diagonal());
     box->SetPos(box_pos);
     box->SetRot(QUNIT);
     box->SetBodyFixed(false);
@@ -181,7 +181,7 @@ int main(int argc, char* argv[]) {
     int max_threads = CHOMPfunctions::GetNumProcs();
     if (threads > max_threads)
         threads = max_threads;
-    msystem.SetParallelThreadNumber(threads);
+    
     CHOMPfunctions::SetNumThreads(threads);
 
     // Set gravitational acceleration

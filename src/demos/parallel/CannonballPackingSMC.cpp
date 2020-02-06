@@ -53,7 +53,7 @@ void CreateModel(ChSystemParallel* sys) {
     // Material properties (same on bin and balls)
     float Y = 1e10f;
     float cr = 0.0f;
-    auto mat = std::make_shared<ChMaterialSurfaceSMC>();
+    auto mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
     mat->SetFriction(friction);
     mat->SetYoungModulus(Y);
     mat->SetRestitution(cr);
@@ -71,7 +71,7 @@ void CreateModel(ChSystemParallel* sys) {
             for (int y = 0; y <= _num_ball_; y++) {
                 ChVector<> pos = ChVector<>(x * sphere_radius * 2 + shift, y * sphere_radius * 2 + shift, sphere_z);
                 auto ball =
-                    std::make_shared<ChBody>(std::make_shared<ChCollisionModelParallel>(), ChMaterialSurface::SMC);
+                    chrono_types::make_shared<ChBody>(chrono_types::make_shared<ChCollisionModelParallel>(), ChMaterialSurface::SMC);
                 ball->SetMaterialSurface(mat);
                 ball->SetIdentifier(ballId);
                 ball->SetMass(mass);
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
     int max_threads = CHOMPfunctions::GetNumProcs();
     if (threads > max_threads)
         threads = max_threads;
-    msystem.SetParallelThreadNumber(threads);
+    
     CHOMPfunctions::SetNumThreads(threads);
 
     // Set gravitational acceleration
